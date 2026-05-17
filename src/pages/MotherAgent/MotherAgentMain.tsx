@@ -490,14 +490,14 @@ function ParasitePicker({ locale, available, current, onChange, disabled }: Para
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const zh = locale === 'zh' || locale === 'zh-Hans';
-  const label = zh ? '寄生' : 'Parasite';
+  const label = zh ? '接入' : 'Connect';
   const tooltip = zh
-    ? '我自己只有短暂记忆。装好 Claude Code、Hermes Agent 或 OpenClaw 并配置模型后，点击寄生 — 我会借用它们的能力跑这一轮：持久记忆、自带技能、成熟工具集。'
-    : "My own memory is short-lived. Install Claude Code, Hermes Agent, or OpenClaw with a model configured, then tap Parasite — I'll borrow their capabilities for this turn: persistent memory, built-in skills, and a mature toolset.";
+    ? '我擅长 AI 起步 — 短暂记忆 + 一套成熟的安装部署脚本，帮你跑通各种 AI 代理。想正经长聊？装好 Claude Code、Hermes Agent 或 OpenClaw 后，点 接入 让它们接手对话。'
+    : "I'm built for AI onboarding — short memory, but battle-tested install/deploy scripts that get you running with any AI agent. Want a real long-form conversation? Install Claude Code, Hermes Agent, or OpenClaw, then tap Connect to hand the chat over.";
   const activeLabel = current ? PARASITE_LABELS[current] || current : null;
   const noneInstalled = available.length === 0;
-  const exitLabel = zh ? '退出寄生' : 'Exit parasite';
-  const noneLabel = zh ? '未检测到可寄生的代理' : 'No installed agent detected';
+  const exitLabel = zh ? '断开接入' : 'Disconnect';
+  const noneLabel = zh ? '未检测到可接入的代理' : 'No connectable agent detected';
 
   useEffect(() => {
     if (!open) return;
