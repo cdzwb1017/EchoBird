@@ -112,7 +112,13 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'EchoBird ${{ github.ref_name }}'
           releaseBody: 'See the assets to download and install this version.'
-          releaseDraft: false
+          # Stay as draft until artifacts are uploaded, renamed, and the
+          # release-notes body is filled in. The operator manually flips
+          # to public as the last step of the release flow via
+          # `gh release edit <tag> --draft=false`. Prevents users from
+          # seeing a half-built release page (no Windows .exe, no macOS
+          # Intel .dmg, etc.) while the workflow is still in flight.
+          releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
 
