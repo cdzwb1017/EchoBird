@@ -361,27 +361,36 @@ export function AiPulseProvider({ children }: { children: React.ReactNode }) {
   const { locale } = useI18n();
   const isZhLocale = locale.startsWith('zh');
 
-  // zh users get a 国内/全球 toggle (defaults to 国内, persisted via
-  // localStorage). en users are always pinned to 'en' — we don't show
-  // them Chinese-titled items, both because the source is dominated by
-  // domestic-Chinese reporting and because en users are usually here
-  // for the AI lab / HN signal that en feed surfaces.
-  const [feedSource, setFeedSourceState] = useState<'zh' | 'en'>(() => {
-    if (!isZhLocale) return 'en';
+  // zh users get a 国内/全球 toggle; their selection is persisted in
+  // localStorage and lives on `zhFeedPreference`. en users always see
+  // 'en' regardless of what zh-side preference was stashed earlier —
+  // they don't get the toggle and shouldn't be exposed to Chinese-
+  // titled content.
+  //
+  // feedSource is DERIVED from (isZhLocale, zhFeedPreference) rather
+  // than a separate stateful field — so when the user flips the app
+  // locale in Settings, feedSource recomputes immediately and the
+  // News / Projects pages swap to the appropriate feed (previous bug:
+  // feedSource was useState'd from localStorage once at mount and
+  // never re-synced with locale, leaving zh content visible after
+  // switching to en).
+  const [zhFeedPreference, setZhFeedPreferenceState] = useState<'zh' | 'en'>(() => {
     const stored = localStorage.getItem(FEED_SOURCE_KEY);
     return stored === 'en' ? 'en' : 'zh';
   });
+  const feedSource: 'zh' | 'en' = isZhLocale ? zhFeedPreference : 'en';
   const setFeedSource = useCallback(
     (s: 'zh' | 'en') => {
-      if (!isZhLocale) return; // ignore — en users have no toggle
+      if (!isZhLocale) return; // en users have no toggle, no-op
       localStorage.setItem(FEED_SOURCE_KEY, s);
-      setFeedSourceState(s);
+      setZhFeedPreferenceState(s);
     },
     [isZhLocale]
   );
 
   // Active language for fetching/caching. Derived from feedSource so
-  // that flipping the toggle re-runs the cache+fetch effect below.
+  // that flipping the toggle OR the locale re-runs the cache+fetch
+  // effect below.
   const lang: 'zh' | 'en' = feedSource;
 
   const [items, setItems] = useState<NewsItem[]>([]);
