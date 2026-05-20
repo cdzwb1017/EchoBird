@@ -34,7 +34,9 @@ tauri = { version = "2", features = ["tray-icon"] }
 # *.json must be direct dependencies of the crate that runs tauri-build
 # (this one), even when the runtime initialisation lives in
 # echobird_core. tauri-build's permission validator only walks direct
-# Cargo dependencies, not transitive ones. capabilities/default.json
-# currently uses `shell:allow-open`, so tauri-plugin-shell is the only
-# plugin whose permission manifest must be discoverable here.
+# Cargo dependencies, not transitive ones.
 tauri-plugin-shell = "2"
+# Dialog plugin powers the native file picker in the "我的AI项目" Add
+# dialog. Runtime init lives in echobird_core; this declaration exists
+# so capabilities/default.json's `dialog:*` permissions resolve.
+tauri-plugin-dialog = "2"

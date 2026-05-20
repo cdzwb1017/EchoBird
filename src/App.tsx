@@ -58,6 +58,7 @@ import {
   AiCoursesPanel,
 } from './pages/AiCourses';
 import { FeedbackMain } from './pages/Feedback';
+import { MyProjectsMain } from './pages/MyProjects';
 
 function SidebarConnected({ onSettingsClick }: { onSettingsClick: () => void }) {
   // Selector form (one field per call) so unrelated store fields like
@@ -223,6 +224,7 @@ function App() {
                                         {is('models') && t('page.modelNexus')}
 
                                         {is('apps') && t('page.appManager')}
+                                        {is('myProjects') && t('page.myProjects')}
                                         {is('localLlm') && t('page.localServer')}
                                         {is('mother') && t('page.motherAgent')}
                                         {is('feedback') && t('page.feedback')}
@@ -233,6 +235,7 @@ function App() {
                                         {is('courses') && 'ACADEMY'}
                                         {is('models') && 'ROSTER'}
                                         {is('apps') && 'STUDIO'}
+                                        {is('myProjects') && 'VIBE'}
                                         {is('localLlm') && 'RUNTIME'}
                                         {is('mother') && 'AGENT'}
                                         {is('feedback') && 'SUPPORT'}
@@ -280,6 +283,9 @@ function App() {
 
                                   <div className={pageBlock(is('apps'))}>
                                     <AppManagerMain />
+                                  </div>
+                                  <div className={pageBlock(is('myProjects'))}>
+                                    <MyProjectsMain />
                                   </div>
                                   <div className={pageBlock(is('localLlm'))}>
                                     <LocalServerMain />
