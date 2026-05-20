@@ -348,6 +348,19 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
         const result = await api.launchGame(selectedTool, toolData!.launchFile!, modelConfig);
         if (result && !result.success) {
           console.error('Failed to launch:', result.message);
+        } else if (selectedModel) {
+          // Mirror the apply-path optimistic update (see line ~209). launchable
+          // tools (games / WebView utilities) inject the model via
+          // window.__MODEL_CONFIG__ instead of writing a config file, so the
+          // apply path is skipped — without this, the tool card would forever
+          // show "模型: -" even after a successful launch.
+          setDetectedTools((prev) =>
+            prev.map((t) =>
+              t.id === selectedTool
+                ? { ...t, activeModel: selectedModel.modelId || selectedModel.internalId }
+                : t
+            )
+          );
         }
       } else {
         try {
