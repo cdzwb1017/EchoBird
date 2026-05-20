@@ -61,6 +61,7 @@ export type TKey =
   | 'settings.themeDark'
   | 'settings.themeSystem'
   | 'btn.save'
+  | 'btn.close'
   | 'nav.myProjects'
   | 'page.myProjects'
   | 'myProjects.empty.title'

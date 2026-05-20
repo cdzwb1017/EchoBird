@@ -90,6 +90,7 @@ const en: Translations = {
   // Buttons
   'btn.addModel': 'ADD MODEL',
   'btn.save': 'Save',
+  'btn.close': 'Close',
   'btn.refresh': 'REFRESH',
   'btn.cancel': 'CANCEL',
   'btn.delete': 'DELETE',

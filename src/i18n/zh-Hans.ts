@@ -79,6 +79,7 @@ const zhHans: Partial<Translations> = {
   'closeDialog.hint': '注意:如果你的 Codex / Claude 桌面端 已切换模型,退出会导致无法使用。',
   'btn.addModel': '添加模型',
   'btn.save': '保存',
+  'btn.close': '关闭',
   'btn.refresh': '刷新',
   'btn.cancel': '取消',
   'btn.delete': '删除',

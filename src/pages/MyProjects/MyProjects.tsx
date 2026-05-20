@@ -1,18 +1,34 @@
-// MyProjects page — user-authored AI projects launchable via EchoBird.
+// MyProjects page — built-in samples (Reversi / AI Translator) shown
+// alongside user-added AI projects in a single grid.
 //
-// Mirrors the AppManager visual language (card grid + selected-tool detail)
-// but with a localStorage-backed user project list instead of bundled tools.
-// Cards show launcher + models.json path; the model id displayed in "模型: …"
-// is filled in once we add the Rust read_active_model command for user
-// projects (deferred to a follow-up turn — placeholder shows "—" for now).
+// Two-table architecture:
+//   • Built-ins live in code + the ~/.echobird/<id>/ reference copy on
+//     disk; they are recomputed on every render and never stored in
+//     localStorage. They render with the same visual treatment as user
+//     entries, but [delete] is hidden (system data — not removable) and
+//     [edit] opens a read-only inspector whose 📁 affordances open the
+//     reference folder in the system file manager (Tauri shell:open) so
+//     users can browse/copy the schema files for learning.
+//
+//   • User projects live in localStorage via myProjectsStore. CRUD as
+//     usual: editable fields, 📁 file picker, [delete] removes the entry.
+//
+// Launch behaviour is unchanged: linkedToolId on a built-in still routes
+// AppManager's selectedTool to the bundled launch_game flow; user entries
+// are inert on click for now (Phase D will spawn their launcher exe).
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Folder, X } from 'lucide-react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '../../hooks/useI18n';
+import * as api from '../../api/tauri';
 import {
   useMyProjectsStore,
+  joinPath,
+  pickToolName,
+  BUILTIN_TOOL_IDS,
   type MyProject,
   type MyProjectInput,
+  type BuiltinToolId,
 } from '../../stores/myProjectsStore';
 import { useToolsStore } from '../../stores/toolsStore';
 import { useAppManager } from '../AppManager/context';
@@ -27,7 +43,6 @@ const PLACEHOLDER_LAUNCHER = 'e.g: ~/YourProject/xxx.exe';
 const PLACEHOLDER_MODELS = 'e.g: ~/YourProject/models.json';
 
 // Convert any stored icon path into something the WebView can render.
-// Three flavours of `iconPath` reach this component:
 //   - Seeded built-ins: "./icons/tools/<id>.svg" — Vite-served, use as-is
 //   - User-picked via plugin-dialog: absolute filesystem path — needs file://
 //   - Empty string: caller falls back to a placeholder glyph
@@ -45,29 +60,47 @@ export const MyProjectsMain: React.FC = () => {
   const { t, locale } = useI18n();
   const projects = useMyProjectsStore((s) => s.projects);
   const initStore = useMyProjectsStore((s) => s.init);
-  const seedBuiltins = useMyProjectsStore((s) => s.seedBuiltins);
+  const ensureBuiltinDirs = useMyProjectsStore((s) => s.ensureBuiltinDirs);
+  const builtinDirs = useMyProjectsStore((s) => s.builtinDirs);
   const detectedTools = useToolsStore((s) => s.detectedTools);
-  // Reuse AppManager's selection state. Seeded entries set their
-  // linkedToolId so the right panel + launch button drive the existing
-  // tool flow (just like App Manager). Pure user projects don't have a
-  // linkedToolId yet — selecting them currently leaves the panel empty
-  // until Phase D wires their dedicated launch path.
+  // Reuse AppManager's selection state. Built-ins set their linkedToolId
+  // so the right panel + launch button drive the existing bundled-tool
+  // flow. Pure user projects don't have a linkedToolId yet — selecting
+  // them currently clears the right panel until Phase D wires their
+  // dedicated launch path.
   const { selectedTool, setSelectedTool } = useAppManager();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Hydrate from localStorage once on mount.
+  // Hydrate localStorage once on mount + strip any legacy seeded entries.
   useEffect(() => {
     initStore();
   }, [initStore]);
 
-  // Seed Reversi + AI Translator into the user's project list the first time
-  // the page mounts with tool data available. Idempotent — the store tracks
-  // a flag so we only inject once per device, after which they're real
-  // entries the user can edit or delete.
+  // Resolve each built-in's reference-copy directory in ~/.echobird/<id>/
+  // (Rust copies the bundle there on first call, idempotent thereafter).
   useEffect(() => {
-    if (detectedTools.length > 0) seedBuiltins(detectedTools, locale);
-  }, [detectedTools, locale, seedBuiltins]);
+    if (detectedTools.length > 0) void ensureBuiltinDirs(detectedTools);
+  }, [detectedTools, ensureBuiltinDirs]);
+
+  // Compute built-in entries from code + resolved dirs + live tool scan.
+  // Same shape as user projects so the rest of the page treats them
+  // uniformly; they're just not persisted.
+  const builtinEntries: MyProject[] = BUILTIN_TOOL_IDS.map((id): MyProject | null => {
+    const dir = builtinDirs[id];
+    if (!dir) return null;
+    const tool = detectedTools.find((tt) => tt.id === id);
+    if (!tool) return null;
+    return {
+      id: `builtin-${id}`,
+      name: pickToolName(tool, locale),
+      iconPath: joinPath(dir, `${id}.svg`),
+      launcherPath: joinPath(dir, 'game.html'),
+      modelsJsonPath: joinPath(dir, 'models.json'),
+      createdAt: 0,
+      linkedToolId: id,
+    };
+  }).filter((p): p is MyProject => p !== null);
 
   const openAdd = () => {
     setEditingId(null);
@@ -81,9 +114,9 @@ export const MyProjectsMain: React.FC = () => {
 
   const handleSelect = (project: MyProject) => {
     if (project.linkedToolId) {
-      // Seeded built-in — hand selection off to AppManager so the right panel
-      // shows that tool's model list and the launch button runs the existing
-      // bundled-tool flow.
+      // Built-in — hand selection off to AppManager so the right panel
+      // shows that tool's model list and the launch button runs the
+      // existing bundled-tool flow.
       setSelectedTool(project.linkedToolId);
     } else {
       // User project — clear AppManager selection for now; Phase D will
@@ -94,20 +127,35 @@ export const MyProjectsMain: React.FC = () => {
     }
   };
 
+  // Lookup helper used by the dialog to find the entry's source data
+  // (either a built-in computed entry or a user-stored project).
+  const findEntry = (id: string): MyProject | undefined =>
+    builtinEntries.find((p) => p.id === id) || projects.find((p) => p.id === id);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {projects.map((p) => (
+          {builtinEntries.map((p) => (
             <ProjectToolCard
               key={p.id}
               project={p}
+              isBuiltin
               selected={!!p.linkedToolId && selectedTool === p.linkedToolId}
               onSelect={() => handleSelect(p)}
               onEdit={openEdit}
             />
           ))}
-          {/* "+" empty card — always last */}
+          {projects.map((p) => (
+            <ProjectToolCard
+              key={p.id}
+              project={p}
+              isBuiltin={false}
+              selected={false}
+              onSelect={() => handleSelect(p)}
+              onEdit={openEdit}
+            />
+          ))}
           <button
             onClick={openAdd}
             className="relative p-5 border border-dashed border-cyber-border rounded-card bg-cyber-surface/40 flex flex-col items-center justify-center min-h-[160px] text-cyber-text-secondary hover:text-cyber-text hover:border-cyber-text/40 hover:bg-cyber-surface transition-colors outline-none"
@@ -121,42 +169,40 @@ export const MyProjectsMain: React.FC = () => {
         </div>
       </div>
 
-      {dialogOpen && <AddProjectDialog editingId={editingId} onClose={closeDialog} />}
+      {dialogOpen && (
+        <AddProjectDialog editingId={editingId} onClose={closeDialog} findEntry={findEntry} />
+      )}
     </div>
   );
 };
 
 // ── ProjectToolCard ──
-// Thin adapter that maps a stored MyProject onto AppManager's ToolCard so
-// every card on this page renders with the exact same visual treatment as
-// the App Manager grid (title size, info-row colour, padding, hover state,
-// selection border). The only page-specific bit is the `actions` slot,
-// which fills the "版本: …" row with Edit / Delete buttons.
+// Thin adapter that renders any MyProject — built-in or user — via the
+// same AppManager ToolCard. Built-ins hide the [delete] button (they're
+// system data, not removable); both keep [edit] but the dialog adapts its
+// behaviour based on the entry type.
 
 const ProjectToolCard: React.FC<{
   project: MyProject;
+  isBuiltin: boolean;
   selected: boolean;
   onSelect: () => void;
   onEdit: (id: string) => void;
-}> = ({ project, selected, onSelect, onEdit }) => {
+}> = ({ project, isBuiltin, selected, onSelect, onEdit }) => {
   const { t } = useI18n();
   const detectedTools = useToolsStore((s) => s.detectedTools);
   const deleteProject = useMyProjectsStore((s) => s.deleteProject);
   const confirm = useConfirm();
 
-  // Seeded built-ins (linkedToolId set) read their live activeModel + icon
-  // off the running tool scan, so swapping the model from the right panel
-  // updates the card in place. User-only projects show a placeholder until
-  // Phase D adds models.json read-back.
+  // Built-ins read live activeModel off the tool scan so swapping the
+  // model from the right panel updates the card in place. User-only
+  // projects show a dash until Phase D adds models.json read-back.
   const linked = project.linkedToolId
     ? detectedTools.find((tool) => tool.id === project.linkedToolId)
     : undefined;
 
   return (
     <ToolCard
-      // Built-ins fall through to the bundled ./icons/tools/<id>.svg path by
-      // their tool id; user projects pass their own iconSrc and keep the
-      // project id (for whatever click handling needs it later).
       id={project.linkedToolId || project.id}
       iconSrc={project.linkedToolId ? undefined : iconSrcFor(project.iconPath)}
       name={project.name}
@@ -167,27 +213,29 @@ const ProjectToolCard: React.FC<{
       selected={selected}
       onClick={onSelect}
       actions={
-        // Bracketed mono text — same visual treatment as ModelCard's
-        // [delete] / [edit] in the Model Nexus, so the two pages feel
-        // like part of the same product. Position stays in the version-
-        // row slot (right-aligned at the bottom of the card).
+        // Bracketed mono text — same visual as ModelCard's [delete] / [edit]
+        // in Model Nexus. Built-ins drop [delete] entirely (system data, not
+        // removable); user projects keep both with a danger-confirm modal
+        // before destructive action.
         <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              const ok = await confirm({
-                title: t('myProjects.deleteTitle'),
-                message: t('myProjects.deleteConfirm'),
-                confirmText: t('btn.delete'),
-                cancelText: t('btn.cancel'),
-                type: 'danger',
-              });
-              if (ok) deleteProject(project.id);
-            }}
-            className="text-xs font-mono text-cyber-text-muted/70 hover:text-red-500 transition-colors"
-          >
-            [{t('btn.delete')}]
-          </button>
+          {!isBuiltin && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                const ok = await confirm({
+                  title: t('myProjects.deleteTitle'),
+                  message: t('myProjects.deleteConfirm'),
+                  confirmText: t('btn.delete'),
+                  cancelText: t('btn.cancel'),
+                  type: 'danger',
+                });
+                if (ok) deleteProject(project.id);
+              }}
+              className="text-xs font-mono text-cyber-text-muted/70 hover:text-red-500 transition-colors"
+            >
+              [{t('btn.delete')}]
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -208,19 +256,22 @@ const ProjectToolCard: React.FC<{
 const AddProjectDialog: React.FC<{
   editingId: string | null;
   onClose: () => void;
-}> = ({ editingId, onClose }) => {
+  findEntry: (id: string) => MyProject | undefined;
+}> = ({ editingId, onClose, findEntry }) => {
   const { t } = useI18n();
-  const projects = useMyProjectsStore((s) => s.projects);
   const addProject = useMyProjectsStore((s) => s.addProject);
   const updateProject = useMyProjectsStore((s) => s.updateProject);
+  const builtinDirs = useMyProjectsStore((s) => s.builtinDirs);
 
-  // Initial values: empty (Add) or existing project (Edit). All fields are
-  // editable for every entry — including seeded built-ins. The seeded
-  // Reversi / Translator paths point at *reference copies* in
-  // ~/.echobird/<id>/, not at the bundle EchoBird actually launches, so
-  // edits here are harmless: the launch flow still routes via linkedToolId
-  // to the original bundle.
-  const existing = editingId ? projects.find((p) => p.id === editingId) : null;
+  // Initial values: empty (Add) or existing entry (Edit, built-in or user).
+  const existing = editingId ? findEntry(editingId) : undefined;
+  const isBuiltin = !!existing?.linkedToolId;
+  // Folder to open when a built-in's 📁 is clicked — same dir for all
+  // three file fields (everything lives under ~/.echobird/<id>/).
+  const builtinFolder = isBuiltin
+    ? builtinDirs[existing!.linkedToolId as BuiltinToolId]
+    : undefined;
+
   const [name, setName] = useState(existing?.name ?? '');
   const [iconPath, setIconPath] = useState(existing?.iconPath ?? '');
   const [launcherPath, setLauncherPath] = useState(existing?.launcherPath ?? '');
@@ -235,16 +286,13 @@ const AddProjectDialog: React.FC<{
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Heuristic: pass the field's current value to the dialog as defaultPath
-  // only when it looks like a real filesystem path. Vite-served URLs (the
-  // ./icons/... seed paths) would just confuse the OS dialog.
+  // Pass currentValue so the OS dialog opens at that file's directory when
+  // the user already has a path picked. Skip for Vite-served URLs.
   const looksLikeAbsolutePath = (p: string): boolean => {
     if (!p) return false;
     if (p.startsWith('./') || p.startsWith('../')) return false;
     if (/^https?:/.test(p) || p.startsWith('data:')) return false;
-    // Windows drive (C:\, D:/, etc.) or UNC (\\?\, \\server\)
     if (/^[A-Za-z]:[\\/]/.test(p) || p.startsWith('\\\\')) return true;
-    // POSIX absolute
     if (p.startsWith('/')) return true;
     return false;
   };
@@ -270,11 +318,23 @@ const AddProjectDialog: React.FC<{
     []
   );
 
-  // Save is always allowed — a blank entry is a valid "I'll fill this in
-  // later" draft (the user can come back via Edit). The only real
-  // constraint is that an unnamed card looks empty in the list; we leave
-  // that as the user's call, and Delete is one click away if they regret it.
+  // For built-ins, 📁 opens the reference-copy folder in the system file
+  // manager so users can browse / read / copy the schema files.
+  const openBuiltinFolder = useCallback(async () => {
+    if (!builtinFolder) return;
+    try {
+      await api.openFolder(builtinFolder);
+    } catch (e) {
+      console.error('[MyProjects] open folder failed:', e);
+    }
+  }, [builtinFolder]);
+
   const handleSave = useCallback(() => {
+    if (isBuiltin) {
+      // Built-ins are read-only; the dialog acts as an inspector. No save.
+      onClose();
+      return;
+    }
     const input: MyProjectInput = {
       name: name.trim(),
       iconPath,
@@ -287,7 +347,17 @@ const AddProjectDialog: React.FC<{
       addProject(input);
     }
     onClose();
-  }, [name, iconPath, launcherPath, modelsJsonPath, editingId, updateProject, addProject, onClose]);
+  }, [
+    isBuiltin,
+    name,
+    iconPath,
+    launcherPath,
+    modelsJsonPath,
+    editingId,
+    updateProject,
+    addProject,
+    onClose,
+  ]);
 
   return (
     <div className="fixed inset-0 z-[9998] flex items-center justify-center">
@@ -316,7 +386,12 @@ const AddProjectDialog: React.FC<{
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('myProjects.placeholder.name')}
-              className="w-full px-3 py-2 bg-cyber-input border border-cyber-border rounded text-[14px] text-cyber-text placeholder:text-cyber-text-muted focus:border-cyber-text/40 transition-colors outline-none"
+              readOnly={isBuiltin}
+              className={`w-full px-3 py-2 border rounded text-[14px] transition-colors outline-none ${
+                isBuiltin
+                  ? 'bg-cyber-input/40 border-cyber-border/60 text-cyber-text-muted cursor-not-allowed'
+                  : 'bg-cyber-input border-cyber-border text-cyber-text placeholder:text-cyber-text-muted focus:border-cyber-text/40'
+              }`}
             />
           </FieldLabel>
 
@@ -324,12 +399,15 @@ const AddProjectDialog: React.FC<{
             <FilePickerButton
               value={iconPath}
               placeholder={PLACEHOLDER_ICON}
-              onClick={() =>
-                pickFile(
-                  [{ name: 'Icon', extensions: ['ico', 'svg', 'png'] }],
-                  setIconPath,
-                  iconPath
-                )
+              onClick={
+                isBuiltin
+                  ? openBuiltinFolder
+                  : () =>
+                      pickFile(
+                        [{ name: 'Icon', extensions: ['ico', 'svg', 'png'] }],
+                        setIconPath,
+                        iconPath
+                      )
               }
             />
           </FieldLabel>
@@ -338,14 +416,15 @@ const AddProjectDialog: React.FC<{
             <FilePickerButton
               value={launcherPath}
               placeholder={PLACEHOLDER_LAUNCHER}
-              onClick={() =>
-                // No filter — only Windows uses .exe; macOS apps are .app
-                // bundles (dirs), Linux launchers are arbitrary ELF / shell
-                // scripts / desktop files. Forcing .exe would lock the
-                // feature to one OS, so we let the user pick anything and
-                // accept that an invalid choice fails on launch (their
-                // call).
-                pickFile([], setLauncherPath, launcherPath)
+              onClick={
+                isBuiltin
+                  ? openBuiltinFolder
+                  : () =>
+                      // No extension filter — only Windows uses .exe, macOS
+                      // is .app, Linux is arbitrary. Let the user pick
+                      // anything and accept that an invalid pick fails on
+                      // launch.
+                      pickFile([], setLauncherPath, launcherPath)
               }
             />
           </FieldLabel>
@@ -354,31 +433,47 @@ const AddProjectDialog: React.FC<{
             <FilePickerButton
               value={modelsJsonPath}
               placeholder={PLACEHOLDER_MODELS}
-              onClick={() =>
-                pickFile(
-                  [{ name: 'models.json', extensions: ['json'] }],
-                  setModelsJsonPath,
-                  modelsJsonPath
-                )
+              onClick={
+                isBuiltin
+                  ? openBuiltinFolder
+                  : () =>
+                      pickFile(
+                        [{ name: 'models.json', extensions: ['json'] }],
+                        setModelsJsonPath,
+                        modelsJsonPath
+                      )
               }
             />
           </FieldLabel>
         </div>
 
         <div className="flex border-t border-cyber-border/40">
-          <button
-            onClick={onClose}
-            className="flex-1 px-6 py-3 text-[14px] text-cyber-text-secondary hover:text-cyber-text hover:bg-cyber-elevated transition-colors"
-          >
-            {t('btn.cancel')}
-          </button>
-          <div className="w-px bg-cyber-border/40" />
-          <button
-            onClick={handleSave}
-            className="flex-1 px-6 py-3 text-[14px] text-cyber-text hover:bg-cyber-elevated transition-colors font-semibold"
-          >
-            {t('btn.save')}
-          </button>
+          {/* Built-ins are read-only — single Close button takes the whole
+              row. User projects get Cancel + Save side by side. */}
+          {isBuiltin ? (
+            <button
+              onClick={onClose}
+              className="flex-1 px-6 py-3 text-[14px] text-cyber-text hover:bg-cyber-elevated transition-colors font-semibold"
+            >
+              {t('btn.close')}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="flex-1 px-6 py-3 text-[14px] text-cyber-text-secondary hover:text-cyber-text hover:bg-cyber-elevated transition-colors"
+              >
+                {t('btn.cancel')}
+              </button>
+              <div className="w-px bg-cyber-border/40" />
+              <button
+                onClick={handleSave}
+                className="flex-1 px-6 py-3 text-[14px] text-cyber-text hover:bg-cyber-elevated transition-colors font-semibold"
+              >
+                {t('btn.save')}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -397,46 +492,23 @@ const FieldLabel: React.FC<{ label: string; children: React.ReactNode }> = ({
   </div>
 );
 
-// Visually a text input (matches the project-name field above) but acts as a
-// file picker — clicking anywhere on the row opens the OS dialog. Placeholder
-// shows the example path until the user picks something. When readOnly is
-// true (built-in entries), the field renders as a non-interactive box: the
-// value is shown for reference, no folder icon, no click handler — Reversi /
-// Translator's launcher + models.json live in the bundle and editing them
-// here would just be misleading (the actual launch flow is hardcoded to
-// AppManager's built-in path).
+// File-picker / folder-opener button. Always renders the same visual (input
+// box + folder icon on the right) regardless of mode; the caller decides
+// what onClick does — file picker for editable rows, "open folder" for
+// built-in read-only rows.
 const FilePickerButton: React.FC<{
   value: string;
   placeholder: string;
   onClick: () => void;
-  readOnly?: boolean;
-  hint?: string;
-}> = ({ value, placeholder, onClick, readOnly, hint }) => {
-  if (readOnly) {
-    return (
-      <div
-        className="w-full px-3 py-2 bg-cyber-input/40 border border-cyber-border/60 rounded text-[14px] text-left flex items-center justify-between gap-2 cursor-not-allowed"
-        title={value || placeholder}
-      >
-        <span className="truncate text-cyber-text-muted">{value || placeholder}</span>
-        {hint && (
-          <span className="text-[11px] font-mono text-cyber-text-muted/70 flex-shrink-0">
-            ({hint})
-          </span>
-        )}
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full px-3 py-2 bg-cyber-input border border-cyber-border rounded text-[14px] text-left flex items-center justify-between gap-2 hover:border-cyber-text/40 transition-colors outline-none"
-    >
-      <span className={`truncate ${value ? 'text-cyber-text' : 'text-cyber-text-muted'}`}>
-        {value || placeholder}
-      </span>
-      <Folder size={14} className="flex-shrink-0 text-cyber-text-secondary" />
-    </button>
-  );
-};
+}> = ({ value, placeholder, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full px-3 py-2 bg-cyber-input border border-cyber-border rounded text-[14px] text-left flex items-center justify-between gap-2 hover:border-cyber-text/40 transition-colors outline-none"
+  >
+    <span className={`truncate ${value ? 'text-cyber-text' : 'text-cyber-text-muted'}`}>
+      {value || placeholder}
+    </span>
+    <Folder size={14} className="flex-shrink-0 text-cyber-text-secondary" />
+  </button>
+);

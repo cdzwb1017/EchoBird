@@ -85,6 +85,7 @@ const ja: Partial<Translations> = {
     '注意：Codex / Claude デスクトップ版のモデルを切り替えている場合、終了すると使用できなくなります。',
   'btn.addModel': 'モデル追加',
   'btn.save': '保存',
+  'btn.close': '閉じる',
   'btn.refresh': '更新',
   'btn.cancel': 'キャンセル',
   'btn.delete': '削除',

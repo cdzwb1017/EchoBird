@@ -1,15 +1,19 @@
 // MyProjects store — user-authored AI projects added via the "我的AI项目"
-// page. The page treats this as a config table: each entry records a
-// project's name, icon, launcher, and models.json. Reversi + AI Translator
-// arrive as seeded entries on first run so the user sees something useful
-// before they author anything; after that the seed is indistinguishable
-// from a custom project (delete it, edit its paths, etc.).
+// page. **Two-table architecture** (mirrors Model Nexus):
 //
-// Persistence is localStorage-only for now; this keeps the experimental
-// feature from widening the Rust AppSettings struct in echobird_core. When
-// the feature stabilises and we need cross-device sync or richer launch
-// metadata, we can migrate to ~/.echobird/projects.json via a Tauri command
-// without changing the public API of this store.
+//   • Built-in entries (Reversi / AI Translator) live in code + the bundled
+//     resource dir. They are NOT stored here — the page computes them at
+//     render time, and the only persistence they need is the reference copy
+//     in ~/.echobird/<id>/ (which Rust's seed_builtin_to_user_dir manages).
+//     They render alongside user entries but can't be edited or deleted —
+//     they're system data, like the built-in models in Model Nexus.
+//
+//   • User-added entries live here, persisted to localStorage. CRUD as
+//     expected.
+//
+// On init() we run a one-time migration that strips any entry with
+// linkedToolId set — those were seeded by the previous architecture and
+// don't belong in user storage anymore.
 import { create } from 'zustand';
 import type { LocalTool } from '../api/types';
 import * as api from '../api/tauri';
@@ -28,31 +32,34 @@ export interface MyProject {
   /** Absolute path to the project's models.json (model-field read/write mapping). */
   modelsJsonPath: string;
   createdAt: number;
-  /** Set when this entry was seeded from a bundled tool (reversi / translator).
-   *  Selecting the card on the page will use this id to drive AppManager's
-   *  right-side model panel + launch button — the user gets the App Manager
-   *  flow for free on seeded entries. */
+  /** Set when this entry mirrors a bundled tool (reversi / translator).
+   *  Used at render time to (a) drive AppManager's right-side panel via
+   *  linkedToolId and (b) flag the card as built-in for UI affordances
+   *  (no delete button, read-only edit dialog with "open folder" 📁). */
   linkedToolId?: string;
 }
 
 export type MyProjectInput = Omit<MyProject, 'id' | 'createdAt'>;
 
 const LS_KEY = 'echobird_my_projects';
-const SEED_FLAG_KEY = 'echobird_my_projects_seeded';
+// Old flag from the previous seed-into-localStorage design. Cleaned up on
+// init so future versions don't trip on it; we never read it again.
+const LEGACY_SEED_FLAG_KEY = 'echobird_my_projects_seeded';
+
+// Bundled tools surfaced as built-in entries on the "我的AI项目" page.
+// Order here is the order rendered on the page.
+export const BUILTIN_TOOL_IDS = ['reversi', 'translator'] as const;
+export type BuiltinToolId = (typeof BUILTIN_TOOL_IDS)[number];
 
 // Append a filename to a directory path using whichever separator the
 // directory already speaks (Windows-style backslashes if the path looks
 // like Windows, forward slashes otherwise).
-const joinPath = (dir: string, file: string): string => {
+export const joinPath = (dir: string, file: string): string => {
   if (!dir) return '';
   const trimmed = dir.replace(/[\\/]$/, '');
   const sep = trimmed.includes('\\') ? '\\' : '/';
   return `${trimmed}${sep}${file}`;
 };
-
-// Bundled tools we drop into the project list on the user's first visit.
-// Order here is the order rendered on the page.
-const SEED_TOOL_IDS = ['reversi', 'translator'] as const;
 
 const loadFromStorage = (): MyProject[] => {
   try {
@@ -96,7 +103,7 @@ const makeId = (name: string): string => {
 };
 
 // Pick the best display name for a tool given the current UI locale.
-const pickToolName = (tool: LocalTool, locale: string): string => {
+export const pickToolName = (tool: LocalTool, locale: string): string => {
   if (locale === 'en' || !tool.names) return tool.name;
   const direct = tool.names[locale];
   if (direct) return direct;
@@ -107,23 +114,28 @@ const pickToolName = (tool: LocalTool, locale: string): string => {
 };
 
 interface MyProjectsState {
+  /** User-added projects only. Built-in entries (Reversi / Translator) are
+   *  computed at render time in the page component and never live here. */
   projects: MyProject[];
+  /** Resolved absolute paths to each built-in's reference copy directory in
+   *  ~/.echobird/<id>/, populated by ensureBuiltinDirs(). The page uses
+   *  these to build the on-the-fly built-in MyProject records (and to
+   *  resolve the folder for the "open folder" affordance). */
+  builtinDirs: Partial<Record<BuiltinToolId, string>>;
   addProject: (input: MyProjectInput) => MyProject;
   updateProject: (id: string, patch: Partial<MyProjectInput>) => void;
   deleteProject: (id: string) => void;
   init: () => void;
-  /** Idempotent — only runs once per device (tracks a localStorage flag).
-   *  Pass the live tool-scan results so we can confirm the built-ins are
-   *  scanned before seeding (we don't actually need their paths anymore —
-   *  the Rust `seed_builtin_to_user_dir` command copies files from the
-   *  bundle into the user's home and returns the destination directory).
-   *  Returns silently without seeding if the scan hasn't surfaced the
-   *  built-ins yet; page will call again on the next render. */
-  seedBuiltins: (tools: LocalTool[], locale: string) => Promise<void>;
+  /** Idempotent — calls Rust seed_builtin_to_user_dir for each built-in
+   *  present in the live tool scan, populating builtinDirs once we have a
+   *  resolvable destination. The Rust side skips files the user already
+   *  has, so this is safe to run on every tool-scan update. */
+  ensureBuiltinDirs: (tools: LocalTool[]) => Promise<void>;
 }
 
 export const useMyProjectsStore = create<MyProjectsState>((set, get) => ({
   projects: [],
+  builtinDirs: {},
   addProject: (input) => {
     const project: MyProject = {
       ...input,
@@ -146,54 +158,34 @@ export const useMyProjectsStore = create<MyProjectsState>((set, get) => ({
     set({ projects: next });
   },
   init: () => {
-    set({ projects: loadFromStorage() });
-  },
-  seedBuiltins: async (tools, locale) => {
-    // First-run seed only. Once the flag is set, this is a no-op — even if
-    // the user deleted Reversi from the list. (Deleted entries can be
-    // brought back by clearing the flag manually; resurrecting them every
-    // launch would override the user's explicit delete.)
-    if (localStorage.getItem(SEED_FLAG_KEY) === '1') return;
-
-    // Need at least one of each seed tool present in the scan before we run.
-    // Pre-tool-scan renders should be a no-op so we can retry next render.
-    const presentIds = SEED_TOOL_IDS.filter((id) => tools.some((t) => t.id === id));
-    if (presentIds.length < SEED_TOOL_IDS.length) return;
-
-    const seeded: MyProject[] = [];
-    for (const id of SEED_TOOL_IDS) {
-      const tool = tools.find((t) => t.id === id)!;
-      let userDir: string;
-      try {
-        // Rust copies the bundle (paths.json, models.json, game.html, <id>.svg,
-        // README.txt) to ~/.echobird/<id>/ and returns the absolute dest path.
-        // Files that already exist are NOT overwritten — respects any prior
-        // edits the user made before deleting / re-seeding.
-        userDir = await api.seedBuiltinToUserDir(id);
-      } catch (e) {
-        console.error(`[MyProjects] Failed to seed ${id}:`, e);
-        // Abort the whole seed — partial seeding would leave the page in a
-        // half-baked state. User can try again on next launch.
-        return;
-      }
-      seeded.push({
-        id: `builtin-${id}-${Math.random().toString(36).slice(2, 8)}`,
-        name: pickToolName(tool, locale),
-        iconPath: joinPath(userDir, `${id}.svg`),
-        launcherPath: joinPath(userDir, 'game.html'),
-        modelsJsonPath: joinPath(userDir, 'models.json'),
-        createdAt: Date.now(),
-        linkedToolId: id,
-      });
+    // Migration: strip seeded built-in entries from localStorage. They moved
+    // out of user storage when we switched to the two-table model — keeping
+    // them would render duplicates next to the computed built-ins.
+    const raw = loadFromStorage();
+    const filtered = raw.filter((p) => !p.linkedToolId);
+    if (filtered.length !== raw.length) {
+      saveToStorage(filtered);
     }
-
-    const next = [...seeded, ...get().projects];
-    saveToStorage(next);
-    set({ projects: next });
     try {
-      localStorage.setItem(SEED_FLAG_KEY, '1');
+      localStorage.removeItem(LEGACY_SEED_FLAG_KEY);
     } catch {
-      /* private mode — accept that we'll re-seed next launch */
+      /* private mode */
     }
+    set({ projects: filtered });
+  },
+  ensureBuiltinDirs: async (tools) => {
+    const next: Partial<Record<BuiltinToolId, string>> = { ...get().builtinDirs };
+    let changed = false;
+    for (const id of BUILTIN_TOOL_IDS) {
+      if (next[id]) continue; // already resolved
+      if (!tools.some((t) => t.id === id)) continue; // tool scan hasn't surfaced this id yet
+      try {
+        next[id] = await api.seedBuiltinToUserDir(id);
+        changed = true;
+      } catch (e) {
+        console.error(`[MyProjects] Failed to ensure built-in dir for ${id}:`, e);
+      }
+    }
+    if (changed) set({ builtinDirs: next });
   },
 }));
