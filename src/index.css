@@ -358,12 +358,6 @@ pre {
 .pulse-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-/* Hide the up/down arrow buttons — Windows-era relic; modern UIs
- * (macOS, iOS, recent Windows) ship without them. Mouse wheel and
- * thumb-drag cover all use cases. */
-.pulse-scroll::-webkit-scrollbar-button {
-  display: none;
-}
 .pulse-scroll::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 999px;
