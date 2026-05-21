@@ -81,8 +81,7 @@ three surfaces was formalized:
 | **2026-03-26** | `1ae49436` | **Model Nexus / 模型中心** (consolidated as a dedicated page; underlying data layer present since `546a14ae`) | — |
 
 Seventy-nine days after day one, the **fourth user-facing surface**
-shipped, on the same calendar day that the most prominent visual
-imitator (`marvis.qq.com`) launched publicly:
+shipped:
 
 | **2026-05-20** | `05a35d13` | **My AI Projects / 我的AI项目** (`src/pages/MyProjects/`) — bundled with two complete reference applications (Reversi + AI Translator) as user-tutorial templates | — |
 
@@ -337,8 +336,7 @@ EchoBird **首日公开 commit**(2026-03-02,`546a14ae`)在同一个 Tauri
 
 | **2026-03-26** | `1ae49436` | **模型中心 / Model Nexus**(独立页面;底层数据自 `546a14ae` 已存在) | — |
 
-距离首日发布 79 天后,**第四个用户面向界面**发布 —— 恰好是最显著的
-视觉模仿者(`marvis.qq.com`)公开上线的同一天:
+距离首日发布 79 天后,**第四个用户面向界面**发布:
 
 | **2026-05-20** | `05a35d13` | **我的AI项目 / My AI Projects**(`src/pages/MyProjects/`) —— 内置两个完整可运行的参考应用(黑白棋 + AI 翻译)作为用户教程模板 | — |
 
