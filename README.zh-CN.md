@@ -12,7 +12,7 @@
   </a>
   <img src="https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="平台" />
   <img src="https://img.shields.io/badge/%E6%8A%80%E6%9C%AF-Tauri%20%2B%20Rust-orange?style=flat-square" alt="Tauri + Rust" />
-  <img src="https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF-MIT-green?style=flat-square" alt="MIT 许可" />
+  <img src="https://img.shields.io/github/license/edison7009/EchoBird?style=flat-square" alt="AGPL-3.0-or-later 许可" />
 </p>
 
 <p align="center">
@@ -120,9 +120,20 @@ curl -fsSL https://echobird.ai/install.sh | sh
 | Linux x64 · Fedora/RHEL | `EchoBird_<ver>_Linux_x64.rpm` |
 | Linux arm64 · Fedora/RHEL | `EchoBird_<ver>_Linux_arm64.rpm` |
 
-## 许可
+## 协议与商标
 
-MIT —— 详见 [LICENSE](LICENSE)。
+**代码** —— EchoBird 采用
+[GNU Affero 通用公共许可证 v3 或更高版本 (AGPL-3.0-or-later)](LICENSE) 发布。
+任何 fork、修改版本或基于本代码部署的托管服务,都必须同样以 AGPL-3.0 开源 ——
+**SaaS 部署也不例外**。完整文本见 [LICENSE](LICENSE),署名要求见 [NOTICE](NOTICE)。
+
+**品牌** —— *EchoBird* 与 *Model Nexus / 模型中心* 为 edison7009 的普通法商标。
+**Fork 欢迎 —— 无需抹掉我们的名字和 Logo**。如果你的 fork 在 README / About 页面 /
+产品页诚实标注 EchoBird 为上游,可以保留我们的身份可见(例:"EchoBird 社区版 by X");
+如果你坚持完全重新品牌化也可以,改名 + 替换 Logo,但 NOTICE 中保留致谢。硬底线只有
+两条:**未授权的商业 SaaS / 应用商店产品字面挂我们的商标**;以及**把代码当作你
+从零写的原创发布**。Fork 之上你新增的原创代码归你,你想怎么命名都行。完整政策见
+[TRADEMARKS.md](TRADEMARKS.md)。
 
 ---
 

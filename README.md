@@ -13,7 +13,7 @@
   </a>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/built%20with-Tauri%20%2B%20Rust-orange?style=flat-square" alt="Tauri + Rust" />
-  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License" />
+  <img src="https://img.shields.io/github/license/edison7009/EchoBird?style=flat-square" alt="AGPL-3.0-or-later License" />
 </p>
 
 <p align="center">
@@ -121,9 +121,24 @@ Latest release → <https://github.com/edison7009/EchoBird/releases/latest>
 | Linux x64 · Fedora/RHEL | `EchoBird_<ver>_Linux_x64.rpm` |
 | Linux arm64 · Fedora/RHEL | `EchoBird_<ver>_Linux_arm64.rpm` |
 
-## License
+## License & Trademarks
 
-MIT — see [LICENSE](LICENSE).
+**Code** — EchoBird is licensed under the
+[GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)](LICENSE).
+Any fork, modification, or hosted service derived from this code must also be
+released under AGPL-3.0 — including SaaS deployments. See [LICENSE](LICENSE)
+for the full text and [NOTICE](NOTICE) for attribution requirements.
+
+**Brand** — *EchoBird* and *Model Nexus* (模型中心) are common-law trademarks
+of edison7009. **Forks are welcome — no need to scrub our name and logo.** If
+your fork honestly credits EchoBird as upstream (README, About screen, or
+product page), you may keep our identity visible (e.g. "EchoBird Community
+Edition by X"). If you prefer to rebrand entirely, that's also fine — just
+keep the NOTICE attribution. The hard line is **commercial SaaS / app-store
+products literally branded with our marks** without permission, or
+**presenting the code as your own from-scratch original work**. Genuinely
+original code you add on top of either path belongs to you, named however
+you like. See [TRADEMARKS.md](TRADEMARKS.md) for the full policy.
 
 ---
 

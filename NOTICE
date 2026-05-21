@@ -1,0 +1,133 @@
+EchoBird
+Copyright (c) 2026 edison7009 and EchoBird contributors
+
+This product includes software developed by the EchoBird project
+(https://github.com/edison7009/EchoBird).
+
+Licensed under the GNU Affero General Public License, Version 3.0 or later
+(AGPL-3.0-or-later). See the LICENSE file for the full license text, or
+visit https://www.gnu.org/licenses/agpl-3.0.html.
+
+================================================================================
+ORIGINAL DESIGNS AND CONCEPTS
+================================================================================
+
+The following designs, features, and architectural patterns were originated
+by the EchoBird project. The source code that implements them is governed
+by the AGPL-3.0 license; the underlying ideas are documented here so that
+downstream forks and reimplementations can credit prior art appropriately.
+
+  1. Mother Agent (internal codename) / 安装与修复 (user-facing UI name)
+     — An AI-driven flow that installs and repairs AI coding tools, agents,
+     and CLIs. Supports both local and remote execution targets.
+     First public commit: 2026-03-02 (src/pages/MotherAgent.tsx, 1410 lines
+     at commit 546a14ae).
+
+  2. Model Nexus / 模型中心 — "Configure once, used everywhere"
+     A unified model data hub architecture where a single set of model
+     configurations (API key, base URL, model ID, protocol) drives multiple
+     distinct user-facing scenarios (Install & Repair, Local LLM, My AI
+     Projects, App Manager) without any per-scenario re-configuration.
+     First public commit: 2026-03-02 (initial model directory and icons);
+     dedicated "Model Nexus" naming: 2026-03-26.
+
+  3. 我的AI项目 / My AI Projects
+     A user-facing flow for managing vibe-coded apps and games with
+     per-project model assignment. Each user project lives as its own card
+     in EchoBird with editable model bindings and a one-click launch.
+     First public commit: 2026-05-20 (src/pages/MyProjects/).
+
+  4. 应用管理 / App Manager
+     A one-click launch and management panel for AI / Agent applications
+     and games. Tools are registered via paths.json metadata; the same UI
+     handles install, model swap, and launch with no terminal interaction.
+     First public commit: 2026-03-02 (src/pages/AppManager.tsx, 674 lines
+     at commit 546a14ae).
+
+  5. Codex Translator with Spec-Pure Passthrough
+     A Responses ↔ Chat Completions translator (and Anthropic Messages
+     equivalent) that deliberately forwards only OpenAI-spec-canonical
+     fields and refuses per-vendor shimming for upstream non-compliance.
+     The refusal to shim is treated as a feature, not a limitation — it
+     keeps the natural feedback chain to vendors intact and avoids
+     accumulating tech debt from speculative compatibility layers.
+     First public commit: 2026-03-04 onward (originally under
+     tools/codex/, later moved to src-tauri/src/services/codex_proxy/).
+
+These innovations are protected as original expression under copyright law
+and, where applicable, as common-law trademarks. See TRADEMARKS.md for the
+brand and naming policy.
+
+================================================================================
+THIRD-PARTY ASSETS (ICONS / ARTWORK)
+================================================================================
+
+  - EchoBird app icon (docs/icon.png and platform variants under
+    src-tauri/icons/)
+      The EchoBird logomark is an original work by the EchoBird project.
+      All rights reserved. See TRADEMARKS.md for the scope of brand rights.
+
+  - Model provider icons (public/icons/models/*.svg)
+      Each provider's official logomark (OpenAI, Anthropic, DeepSeek,
+      Google, Alibaba, Zhipu, Moonshot, Xiaomi, xAI, etc.) is the property
+      of the respective company and is displayed in EchoBird solely to
+      identify the provider's API for the user. Use is nominative fair
+      use; no endorsement is implied or claimed. See "THIRD-PARTY
+      TRADEMARKS" below.
+
+================================================================================
+THIRD-PARTY TRADEMARKS (NOMINATIVE FAIR USE)
+================================================================================
+
+The following names and logos appear in EchoBird solely to identify the
+third-party tools, agents, models, and runtimes that EchoBird supports.
+EchoBird is not affiliated with, endorsed by, or sponsored by any of these
+companies or projects. All marks remain the property of their respective
+owners and are used here under the doctrine of nominative fair use.
+
+  - Claude / Claude Code         — Anthropic, PBC
+  - OpenAI / Codex / ChatGPT     — OpenAI, Inc.
+  - Gemini                       — Google LLC
+  - DeepSeek                     — DeepSeek
+  - Qwen / Tongyi                — Alibaba Group
+  - GLM / ChatGLM                — Zhipu AI
+  - Kimi                         — Moonshot AI
+  - MiMo                         — Xiaomi
+  - Grok                         — xAI Corp.
+  - Cursor                       — Anysphere
+  - Windsurf                     — Codeium
+  - Trae                         — ByteDance
+  - VS Code                      — Microsoft Corporation
+  - Ollama                       — Ollama
+  - llama.cpp                    — Georgi Gerganov
+  - vLLM                         — UC Berkeley Sky Computing Lab
+  - SGLang                       — SGLang project
+  - Tauri                        — the Tauri Programme
+  - Windows / PowerShell         — Microsoft Corporation
+  - macOS                        — Apple Inc.
+  - Linux                        — Linus Torvalds
+
+If you are a rights holder and believe your mark is used in a way that
+exceeds nominative fair use, please open an issue with the label
+`trademark` at https://github.com/edison7009/EchoBird/issues and we
+will adjust promptly.
+
+================================================================================
+THIRD-PARTY COMPONENTS
+================================================================================
+
+EchoBird bundles or links against open-source components whose licenses
+and notices are preserved in their respective source trees. A non-exhaustive
+list of major upstream projects:
+
+  - Tauri (MIT / Apache-2.0)         https://tauri.app
+  - React (MIT)                      https://react.dev
+  - Vite (MIT)                       https://vitejs.dev
+  - TailwindCSS (MIT)                https://tailwindcss.com
+  - lucide-react (ISC)               https://lucide.dev
+  - Rust crates listed in Cargo.toml — see each crate's own license
+  - npm packages listed in package.json — see each package's own license
+
+Each component remains under its own license. The AGPL-3.0 license that
+governs EchoBird as a whole does not override the terms of these bundled
+or linked components.
