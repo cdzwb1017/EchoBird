@@ -337,6 +337,41 @@ pre {
   background: rgba(255, 255, 255, 0.18);
 }
 
+/* Auto-hide themed scrollbar — for AI 资讯 / 明星项目 / AI 公开课 lists
+ * and their sidebars. Pair with the `usePulseScroll` ref hook: it toggles
+ * `.is-scrolling` on scroll motion and clears it 1s after the user stops,
+ * so the scrollbar fades out on idle. Hover over the container keeps it
+ * visible. Width is 5px (occupies layout, but the gutter is barely
+ * perceptible vs the OS-default 15-17px) and the thumb uses the brand
+ * accent at 35% so it reads as themed without competing with content.
+ * Overrides the global `::-webkit-scrollbar { display: none }` above. */
+.pulse-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+.pulse-scroll::-webkit-scrollbar {
+  display: block;
+  width: 5px;
+  height: 5px;
+}
+.pulse-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pulse-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+  transition: background 0.3s ease;
+}
+.pulse-scroll.is-scrolling,
+.pulse-scroll:hover {
+  scrollbar-color: rgb(var(--accent-rgb) / 0.35) transparent;
+}
+.pulse-scroll.is-scrolling::-webkit-scrollbar-thumb,
+.pulse-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgb(var(--accent-rgb) / 0.35);
+}
+
 /* Pure-white SVG logos invert in light mode so they read on the cream
    card surface. Logos with mixed colors are skipped (the filter would
    shift their accent hues). */

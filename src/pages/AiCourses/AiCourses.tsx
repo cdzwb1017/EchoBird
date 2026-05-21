@@ -17,6 +17,7 @@ import {
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useI18n } from '../../hooks/useI18n';
+import { usePulseScroll } from '../../hooks/usePulseScroll';
 
 // ===== Mirror config =====
 
@@ -558,6 +559,7 @@ function CourseCard({ course }: { course: Course }) {
 export function AiCoursesMain() {
   const { t, locale } = useI18n();
   const { catalog, initialLoading, syncing, error, selectedCategory, retry } = useAiCourses();
+  const scrollRef = usePulseScroll<HTMLDivElement>();
   // Only zh-Hans gets the CN supplement (李宏毅 / 李沐 / 飞桨 etc. on Bilibili
   // and CN-domestic platforms). zh-Hant (TW/HK/MO) and ja users see the
   // upstream dair-ai EN list — TW/HK devs follow the international AI stack
@@ -607,7 +609,7 @@ export function AiCoursesMain() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-4">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto pb-4 pulse-scroll">
       {/* Reserved 2px slot — opacity toggle prevents layout shift on sync start/stop */}
       <div className="sticky top-0 z-20 h-0.5 overflow-hidden pointer-events-none mb-2">
         <div
@@ -630,6 +632,7 @@ export function AiCoursesMain() {
 export function AiCoursesPanel() {
   const { t, locale } = useI18n();
   const { catalog, selectedCategory, setSelectedCategory } = useAiCourses();
+  const scrollRef = usePulseScroll<HTMLDivElement>();
   // Only zh-Hans gets the CN supplement (李宏毅 / 李沐 / 飞桨 etc. on Bilibili
   // and CN-domestic platforms). zh-Hant (TW/HK/MO) and ja users see the
   // upstream dair-ai EN list — TW/HK devs follow the international AI stack
@@ -661,7 +664,7 @@ export function AiCoursesPanel() {
         <div className="text-[15px] font-semibold text-cyber-text">{t('courses.filter')}</div>
         {total > 0 && <span className="text-[13px] font-mono text-cyber-text-muted">{total}</span>}
       </div>
-      <div className="flex-1 px-2 overflow-y-auto pb-4 space-y-1">
+      <div ref={scrollRef} className="flex-1 px-2 overflow-y-auto pb-4 space-y-1 pulse-scroll">
         <button
           onClick={() => setSelectedCategory('all')}
           className={`w-full text-left px-3 py-2 rounded text-[14px] transition-colors flex items-center justify-between ${

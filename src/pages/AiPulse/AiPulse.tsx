@@ -29,6 +29,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 import { useI18n } from '../../hooks/useI18n';
+import { usePulseScroll } from '../../hooks/usePulseScroll';
 import type { TKey } from '../../i18n';
 
 // ===== Mirror config =====
@@ -698,16 +699,18 @@ function ItemFeed({ variant }: { variant: PageVariant }) {
 }
 
 export function AiNewsMain() {
+  const scrollRef = usePulseScroll<HTMLDivElement>();
   return (
-    <div className="flex-1 overflow-y-auto pb-4">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto pb-4 pulse-scroll">
       <ItemFeed variant="news" />
     </div>
   );
 }
 
 export function AiProjectsMain() {
+  const scrollRef = usePulseScroll<HTMLDivElement>();
   return (
-    <div className="flex-1 overflow-y-auto pb-4">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto pb-4 pulse-scroll">
       <ItemFeed variant="projects" />
     </div>
   );
@@ -751,6 +754,7 @@ function groupByMonth(dates: string[]): Map<string, string[]> {
 export function AiPulsePanel({ variant = 'news' }: { variant?: PageVariant }) {
   const { t } = useI18n();
   const { items, selectedDate, selectDate, feedSource } = useAiPulse();
+  const scrollRef = usePulseScroll<HTMLDivElement>();
   // Date-button counts must mirror ItemFeed's filter (feedSource, not
   // locale) so the number on each date button reflects what the user
   // will actually see when they click.
@@ -817,7 +821,7 @@ export function AiPulsePanel({ variant = 'news' }: { variant?: PageVariant }) {
       <div className="px-3 py-2 mb-1 bg-transparent">
         <div className="text-[15px] font-semibold text-cyber-text">{t('pulse.archive')}</div>
       </div>
-      <div className="flex-1 px-2 overflow-y-auto pb-4">
+      <div ref={scrollRef} className="flex-1 px-2 overflow-y-auto pb-4 pulse-scroll">
         {cachedDates.length === 0 ? (
           <div className="px-3 py-8 text-center text-[14px] text-cyber-text-muted leading-relaxed">
             {t('pulse.loadingFirst')}
