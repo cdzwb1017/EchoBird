@@ -18,8 +18,11 @@
 <p align="center">
   <a href="https://echobird.ai">官网</a> ·
   <a href="https://github.com/edison7009/EchoBird/releases/latest">下载</a> ·
+  <a href="https://echobird.ai/support/">☕ 请喝咖啡</a> ·
   <a href="README.md">English README</a>
 </p>
+
+<p align="center"><sub><em>如果 EchoBird 帮你解决了问题,可以 <a href="https://echobird.ai/support/">请我们喝杯咖啡 ☕</a>。</em></sub></p>
 
 ---
 
