@@ -144,7 +144,7 @@ const en: Translations = {
   'server.tier.recommended': 'Recommended',
   'server.tier.flagship': 'Flagship',
   'server.tier.minSpec':
-    'Floor specs — production tokens/sec at Flagship only; CUDA driver and engine build versions must match',
+    'Floor specs — the CUDA runtime must match the engine build; installing the GPU driver alone will not load it',
   'server.local': 'LOCAL',
   'server.store': 'STORE',
   'server.selectModelDir': 'Select model directory',

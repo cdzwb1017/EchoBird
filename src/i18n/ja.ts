@@ -135,7 +135,7 @@ const ja: Partial<Translations> = {
   'server.tier.recommended': '推奨',
   'server.tier.flagship': 'フラッグシップ',
   'server.tier.minSpec':
-    '最低スペック — 実用トークン速度はフラッグシップ層のみ。CUDA ドライバとエンジンビルドのバージョンを揃える必要があります',
+    '最低スペック — CUDA ランタイムをエンジンのビルドと一致させる必要があります(GPU ドライバのインストールだけでは読み込まれません)',
   'server.local': 'ローカル',
   'server.store': 'ストア',
   'server.selectModelDir': 'モデルディレクトリを選択',
