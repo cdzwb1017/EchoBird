@@ -1,5 +1,5 @@
 {
   "version": "5.0.2",
-  "releaseDate": "2026-05-26",
+  "releaseDate": "2026-05-25",
   "releaseNotes": "## 中文\n\n**本次更新**\n- 感谢小米 MIMO 提供的测试账号，新的逻辑支持 MIMO 等国产模型，Token 消耗量也大幅度降低 (见 #172)\n- 支持用户自己 Vibe Coding 的应用或游戏切换模型 — 新页面「我的AI项目」一键管理\n- 在 Codex 切换第三方模型时\"插件\"入口可以正常显示(需要先切换到官方默认，Codex 完全退出，再切换到第三方模型)\n\n⚠️ 如果你使用魔改工具启动 Codex 导致丢失聊天记录或没有多 Agent 能力，请找其他工具反馈 — EchoBird 遵守 OpenAI 服务条款和 Codex 完整能力，不支持魔改或伪造 Token\n\n## English\n\n**What's new**\n- Thanks to Xiaomi MIMO for the test account — new logic supports MIMO and other Chinese models, with significantly lower token consumption (see #172)\n- Supports model switching for your own vibe-coded apps and games — manage them in the new \"My AI Projects\" page\n- Codex plugin sidebar entry now displays correctly under third-party models (switch back to the official default first, fully quit Codex, then switch to a third-party model again)\n\n## 日本語\n\n**今回のアップデート**\n- 小米 MIMO 様にテストアカウントをご提供いただき、MIMO など中国系モデル向けの新ロジックを実装、トークン消費量も大幅に削減 (#172 参照)\n- ご自身が Vibe Coding したアプリ / ゲームのモデル切り替えに対応 — 新ページ「マイ AI プロジェクト」で一括管理\n- Codex でサードパーティモデルに切り替えた際、プラグインのサイドバー入口が正常表示(まず公式デフォルトに戻し、Codex を完全終了させてから、再度サードパーティモデルに切り替えてください)"
 }
