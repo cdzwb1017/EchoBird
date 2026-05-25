@@ -436,7 +436,7 @@ export function MotherAgentMain() {
               loading={false}
               onSelect={(id) => {
                 const currentId = parasiteAgent || agentModel;
-                if (id && id !== currentId && chatOutput.length > 0) {
+                if (currentId && id && id !== currentId) {
                   showToast('warning', t('mother.switchEngineHint'), undefined, 5000);
                 }
                 if (id === PARASITE_CLAUDE_ID) {
