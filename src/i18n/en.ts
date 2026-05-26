@@ -145,6 +145,10 @@ const en: Translations = {
   'server.tier.minSpec':
     'CUDA modules must match the engine build — install modules first, then the engine',
   'server.tier.minSpecAuto': 'macOS / Linux — CUDA is auto-managed; just install the engine',
+  'server.enginePicker.title': 'Choose engine version',
+  'server.enginePicker.hint':
+    'Click a row to start installing. The CUDA version must match your installed CUDA modules for GPU mode to work.',
+  'server.enginePicker.latest': 'latest',
   'server.local': 'LOCAL',
   'server.store': 'STORE',
   'server.selectModelDir': 'Select model directory',

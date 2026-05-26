@@ -218,9 +218,13 @@ export const LocalServerMain: React.FC = () => {
   // Engine version picker (Windows + NVIDIA + llama-server only).
   // macOS/Linux + non-NVIDIA stay on the original auto-latest install
   // path; their llama.cpp builds aren't CUDA-variant-keyed anyway.
+  // Picker is a modal opened ON DEMAND when the user clicks SETUP
+  // ENGINE — the big button stays as-is rather than being replaced by
+  // an inline dropdown (less always-on UI weight, less decision
+  // pressure for users who just want the latest).
   const showVersionPicker = isWindows && hasNvidiaGpu && runtime === 'llama-server';
   const [engineOptions, setEngineOptions] = useState<api.LlamaReleaseOption[]>([]);
-  const [selectedEngineId, setSelectedEngineId] = useState<string>('');
+  const [enginePickerOpen, setEnginePickerOpen] = useState(false);
 
   // Get engine download progress from global DownloadContext (single source of truth)
   // Key: use runtime name so progress matches the current engine being installed
@@ -268,29 +272,19 @@ export const LocalServerMain: React.FC = () => {
     check();
   }, [runtime]);
 
-  // Fetch the version picker options (Windows + NVIDIA only). Top 10
-  // releases × CUDA variants. Empty result → degrade to single-button
-  // auto-latest install (the picker just hides).
+  // Pre-fetch the version picker options on mount (Windows + NVIDIA
+  // only). Done eagerly so opening the modal feels instant; empty
+  // result → degrade to auto-latest install when the user clicks.
   useEffect(() => {
     if (!showVersionPicker) {
       setEngineOptions([]);
-      setSelectedEngineId('');
       return;
     }
     let cancelled = false;
     api
       .listEngineReleaseOptions(runtime, 10)
       .then((opts) => {
-        if (cancelled) return;
-        setEngineOptions(opts);
-        if (opts.length > 0) {
-          // Default to the latest release + highest CUDA variant.
-          // Upstream lists releases newest-first; per release, the
-          // higher CUDA variant tends to appear first too, so the
-          // first entry is the best default.
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setSelectedEngineId(`${opts[0].tag}::${opts[0].cudaVersion}`);
-        }
+        if (!cancelled) setEngineOptions(opts);
       })
       .catch(() => {
         if (!cancelled) setEngineOptions([]);
@@ -318,22 +312,35 @@ export const LocalServerMain: React.FC = () => {
     }
   }, [engineDl?.status]);
 
-  // Install engine handler — routes by runtime. When the version
-  // picker is active and the user has a selection, pass the explicit
-  // (tag, cudaVersion) overrides so install bypasses auto-latest and
-  // pins the user's pick.
+  // Install engine handler — routes by platform.
+  // - Windows + NVIDIA + llama-server with options loaded: open the
+  //   version picker modal. User picks; the modal calls
+  //   handleInstallEngineWithPick which does the actual install.
+  // - All other paths (macOS / Linux / non-NVIDIA / non-llama runtimes
+  //   / empty options on network failure): auto-latest install.
   const handleDownloadEngine = async () => {
+    if (showVersionPicker && engineOptions.length > 0) {
+      setEnginePickerOpen(true);
+      return;
+    }
     setEngineStatus('downloading');
     try {
-      if (showVersionPicker && selectedEngineId) {
-        const [pickedTag, pickedCuda] = selectedEngineId.split('::');
-        await api.installLocalEngine(runtime, {
-          version: pickedTag,
-          cudaVersion: pickedCuda,
-        });
-      } else {
-        await api.installLocalEngine(runtime);
-      }
+      await api.installLocalEngine(runtime);
+      setEngineStatus('ready');
+    } catch (err: any) {
+      setEngineStatus('error');
+      setLogs((prev) => [...prev, `[Error] Engine install failed: ${err?.message || err}`]);
+    }
+  };
+
+  const handleInstallEngineWithPick = async (opt: api.LlamaReleaseOption) => {
+    setEnginePickerOpen(false);
+    setEngineStatus('downloading');
+    try {
+      await api.installLocalEngine(runtime, {
+        version: opt.tag,
+        cudaVersion: opt.cudaVersion,
+      });
       setEngineStatus('ready');
     } catch (err: any) {
       setEngineStatus('error');
@@ -475,50 +482,22 @@ export const LocalServerMain: React.FC = () => {
       </button>
     );
 
-    // Engine not installed: show SETUP ENGINE button.
-    // Windows + NVIDIA + llama-server: show version picker beside it.
+    // Engine not installed: show SETUP ENGINE button (always full-width).
+    // On click, Windows+NVIDIA+llama-server opens the picker modal;
+    // other paths go straight to auto-latest install.
     if (engineStatus === 'not-installed' || engineStatus === 'error') {
-      const pickerActive = showVersionPicker && engineOptions.length > 0;
-      const engineSelectOptions = engineOptions.map((opt) => ({
-        id: `${opt.tag}::${opt.cudaVersion}`,
-        label: `${opt.tag} \u00B7 CUDA ${opt.cudaVersion}`,
-      }));
       return (
         <div className="flex gap-1.5 w-full">
-          {pickerActive ? (
-            <div className="flex-1 flex gap-1.5">
-              <div className="flex-1">
-                <MiniSelect
-                  value={selectedEngineId}
-                  onChange={setSelectedEngineId}
-                  options={engineSelectOptions}
-                  className="h-full"
-                  dropUp
-                />
-              </div>
-              <button
-                onClick={handleDownloadEngine}
-                className="px-5 py-3 font-bold text-base tracking-[0.2em] font-mono transition-all flex items-center justify-center gap-2 rounded-lg
-                              bg-cyber-accent text-white border border-cyber-accent hover:bg-cyber-accent-secondary hover:border-cyber-accent-secondary shadow-lg shadow-cyber-accent/30"
-              >
-                <Download className="w-4 h-4" />
-                {engineStatus === 'error'
-                  ? `\u26A0 ${t('server.setupEngine')}`
-                  : t('server.setupEngine')}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleDownloadEngine}
-              className="flex-1 py-3 font-bold text-base tracking-[0.3em] font-mono transition-all flex items-center justify-center gap-2 rounded-lg
-                              bg-cyber-accent text-white border border-cyber-accent hover:bg-cyber-accent-secondary hover:border-cyber-accent-secondary shadow-lg shadow-cyber-accent/30"
-            >
-              <Download className="w-4 h-4" />
-              {engineStatus === 'error'
-                ? `\u26A0 ${t('server.setupEngine')}`
-                : t('server.setupEngine')}
-            </button>
-          )}
+          <button
+            onClick={handleDownloadEngine}
+            className="flex-1 py-3 font-bold text-base tracking-[0.3em] font-mono transition-all flex items-center justify-center gap-2 rounded-lg
+                            bg-cyber-accent text-white border border-cyber-accent hover:bg-cyber-accent-secondary hover:border-cyber-accent-secondary shadow-lg shadow-cyber-accent/30"
+          >
+            <Download className="w-4 h-4" />
+            {engineStatus === 'error'
+              ? `\u26A0 ${t('server.setupEngine')}`
+              : t('server.setupEngine')}
+          </button>
           {folderBtn}
           {startStopBtn}
         </div>
@@ -874,6 +853,61 @@ export const LocalServerMain: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Engine version picker modal — opened only on Windows+NVIDIA */}
+      {enginePickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setEnginePickerOpen(false)}
+        >
+          <div
+            className="bg-cyber-surface border border-cyber-border rounded-lg shadow-2xl w-[520px] max-w-[90vw] max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-cyber-border/60">
+              <div className="text-base font-bold text-cyber-text">
+                {t('server.enginePicker.title')}
+              </div>
+              <div className="text-xs text-cyber-text-muted mt-1">
+                {t('server.enginePicker.hint')}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+              {engineOptions.map((opt, idx) => (
+                <button
+                  key={opt.assetName}
+                  onClick={() => handleInstallEngineWithPick(opt)}
+                  className="w-full text-left px-3 py-2.5 rounded hover:bg-cyber-elevated transition-colors flex items-center justify-between gap-3 group"
+                >
+                  <div className="flex flex-col min-w-0">
+                    <div className="font-mono text-sm text-cyber-text">
+                      <span className="font-bold">CUDA {opt.cudaVersion}</span>
+                      <span className="text-cyber-text-muted ml-2">· {opt.tag}</span>
+                      {idx === 0 && (
+                        <span className="ml-2 text-xs text-cyber-accent">
+                          {t('server.enginePicker.latest')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-cyber-text-muted mt-0.5">
+                      {formatPublishedAt(opt.publishedAt, t)}
+                    </div>
+                  </div>
+                  <Download className="w-4 h-4 text-cyber-text-muted group-hover:text-cyber-accent flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+            <div className="px-5 py-3 border-t border-cyber-border/60 flex justify-end">
+              <button
+                onClick={() => setEnginePickerOpen(false)}
+                className="px-4 py-1.5 text-sm font-mono text-cyber-text-secondary hover:text-cyber-text rounded transition-colors"
+              >
+                {t('btn.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -883,6 +917,29 @@ function formatSize(bytes: number): string {
   if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
   if (bytes >= 1e6) return (bytes / 1e6).toFixed(0) + ' MB';
   return (bytes / 1e3).toFixed(0) + ' KB';
+}
+
+// Format an ISO 8601 publish timestamp for the engine picker.
+// Recent → relative ("3 days ago" — reuses the pulse.* i18n keys);
+// older → absolute YYYY-MM-DD so the raw date stays legible.
+function formatPublishedAt(iso: string, t: (key: any, params?: any) => string): string {
+  if (!iso) return '';
+  const ts = Date.parse(iso);
+  if (isNaN(ts)) return '';
+  const delta = Date.now() - ts;
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (delta < minute) return t('pulse.relJustNow');
+  if (delta < hour) return t('pulse.relMinutes', { n: Math.floor(delta / minute) });
+  if (delta < day) return t('pulse.relHours', { n: Math.floor(delta / hour) });
+  if (delta < 7 * day) return t('pulse.relDays', { n: Math.floor(delta / day) });
+  // > 7 days: show absolute YYYY-MM-DD
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 }
 
 // Estimate VRAM needed from file size (rough: fileSize * 1.2)

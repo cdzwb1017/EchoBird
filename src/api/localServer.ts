@@ -132,6 +132,8 @@ export interface LlamaReleaseOption {
   assetName: string;
   /** Asset size in bytes. */
   sizeBytes: number;
+  /** ISO 8601 timestamp from GitHub `published_at`. Empty if missing. */
+  publishedAt: string;
 }
 
 /**
