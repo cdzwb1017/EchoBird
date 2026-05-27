@@ -2,6 +2,13 @@
   "categories": ["AI 创业", "AI 编程", "Prompt 与 Agent", "学习平台"],
   "courses": [
     {
+      "id": "cn-echobird-openrouter-guide",
+      "name": "白嫖 OpenRouter 免费模型",
+      "url": "https://echobird.ai/openrouter/",
+      "description": "EchoBird 官方教程:用 OpenRouter 每天 50 次免费请求,跑遍最新顶尖大模型,不花一分钱",
+      "category": "AI 编程"
+    },
+    {
       "id": "cn-claude-code-quickstart",
       "name": "Claude Code 快速上手",
       "url": "https://coffeecli.com/courses/claude-code",

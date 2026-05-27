@@ -8,6 +8,13 @@
   ],
   "courses": [
     {
+      "id": "en-echobird-openrouter-guide",
+      "name": "Free LLMs on OpenRouter",
+      "url": "https://echobird.ai/openrouter/",
+      "description": "Official EchoBird guide — wire up OpenRouter's free tier (50 requests/day) and run frontier models without paying a cent.",
+      "category": "AI Coding"
+    },
+    {
       "id": "en-claude-code-quickstart",
       "name": "Claude Code Quickstart",
       "url": "https://coffeecli.com/courses/claude-code",
