@@ -10,7 +10,6 @@
     "docs": "https://hermes-agent.nousresearch.com/docs/",
     "website": "https://github.com/NousResearch/hermes-agent",
     "command": "hermes",
-    "startCommand": "hermes",
     "envVar": "HERMES_HOME",
     "configDir": "~/.hermes",
     "configDirAlt": "%LOCALAPPDATA%\\hermes",
@@ -20,7 +19,7 @@
     "detectByConfigDir": true,
     "paths": {
         "win32": [
-            "%LOCALAPPDATA%\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe"
+            "%LOCALAPPDATA%\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe"
         ],
         "darwin": [
             "/usr/local/bin/hermes",
