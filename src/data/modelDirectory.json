@@ -38,7 +38,7 @@
       "url": "https://www.deepseek.com",
       "baseUrl": "https://api.deepseek.com",
       "anthropicUrl": "https://api.deepseek.com/anthropic",
-      "modelId": "",
+      "modelId": "deepseek-v4-pro",
       "region": "cn"
     },
     {
@@ -62,7 +62,7 @@
       "url": "https://www.kimi.com",
       "baseUrl": "https://api.moonshot.cn/v1",
       "anthropicUrl": "https://api.moonshot.ai/anthropic",
-      "modelId": "",
+      "modelId": "kimi-k2.6",
       "region": "cn"
     },
     {
@@ -78,7 +78,7 @@
       "url": "https://www.zhipuai.cn",
       "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
       "anthropicUrl": "https://api.z.ai/api/anthropic",
-      "modelId": "",
+      "modelId": "glm-5.1",
       "region": "cn"
     },
     {
@@ -118,7 +118,7 @@
       "url": "https://www.minimax.io",
       "baseUrl": "https://api.minimax.io/v1",
       "anthropicUrl": "https://api.minimax.io/anthropic",
-      "modelId": "",
+      "modelId": "MiniMax-M3",
       "region": "global"
     },
     {
@@ -126,7 +126,7 @@
       "url": "https://www.minimaxi.com",
       "baseUrl": "https://api.minimaxi.com/v1",
       "anthropicUrl": "https://api.minimaxi.com/anthropic",
-      "modelId": "",
+      "modelId": "MiniMax-M3",
       "region": "cn"
     },
     {
