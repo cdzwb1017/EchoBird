@@ -1,5 +1,5 @@
 {
-  "version": "5.2.1",
-  "releaseDate": "2026-06-05",
+  "version": "5.2.2",
+  "releaseDate": "2026-06-06",
   "releaseNotes": "## 中文\n\n- 新增 Codex 官方插件市场:中国大陆直连,免 VPN、免翻墙。\n- 解锁步骤:「安装与修复」→「帮我解锁 Codex 桌面端的插件」\n\n## English\n\n- New: official Codex plugin marketplace with direct access from mainland China — no VPN needed.\n- How: \"Install & Repair\" → \"Help me unlock Codex Desktop plugins\"\n\n## 日本語\n\n- 新機能:Codex 公式プラグインマーケット — 中国本土から直接接続、VPN 不要。\n- 手順:「インストールと修復」→「Codex デスクトップのプラグインを解放する」"
 }
