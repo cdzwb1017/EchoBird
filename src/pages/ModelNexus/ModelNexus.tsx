@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
+import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager';
 import { X, Box, ExternalLink, Plus, Lock, Unlock, ClipboardPaste } from 'lucide-react';
 import { ModelCard, ModelCardSkeleton, getModelIcon } from '../../components';
 import { useI18n } from '../../hooks/useI18n';
@@ -797,12 +798,12 @@ export function AddModelModal() {
                     type="button"
                     onClick={async () => {
                       try {
-                        const text = (await navigator.clipboard.readText()).trim();
+                        const text = (await readClipboardText()).trim();
                         if (text) {
                           setNewModelForm((prev) => ({ ...prev, apiKey: text }));
                         }
                       } catch {
-                        /* clipboard unavailable / denied — no-op */
+                        /* clipboard empty / unreadable — no-op */
                       }
                     }}
                     className="absolute right-9 top-1/2 -translate-y-1/2 text-cyber-text/70 transition-colors hover:opacity-80"
