@@ -186,6 +186,9 @@ export type TKey =
   | 'server.gpuFull'
   | 'server.cpuOnly'
   | 'server.setupEngine'
+  | 'server.customCmdTitle'
+  | 'server.customCmdDesc'
+  | 'server.customCmdReset'
   | 'server.upgradeEngine'
   | 'server.downloading'
   // Download / Model Store

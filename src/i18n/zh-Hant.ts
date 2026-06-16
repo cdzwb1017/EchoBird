@@ -197,6 +197,10 @@ const zhHant: Partial<Translations> = {
   'server.gpuFull': '⚡ GPU 自動',
   'server.cpuOnly': '🖥 僅 CPU',
   'server.setupEngine': '安裝引擎',
+  'server.customCmdTitle': '自訂啟動命令',
+  'server.customCmdDesc':
+    '第一行是可執行檔，其餘每行一個參數。可指向你自己的引擎（如 Vulkan 版 llama-server）。請保持 --host / --port 不變，否則 EchoBird 連不上本機服務。',
+  'server.customCmdReset': '重設為預設',
   'server.upgradeEngine': '升級引擎',
   'server.downloading': '下載中',
   'store.add': '[+新增]',

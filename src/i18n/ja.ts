@@ -203,6 +203,10 @@ const ja: Partial<Translations> = {
   'server.gpuFull': '⚡ GPU 自動',
   'server.cpuOnly': '🖥 CPU のみ',
   'server.setupEngine': 'エンジン導入',
+  'server.customCmdTitle': 'カスタム起動コマンド',
+  'server.customCmdDesc':
+    '1行目は実行ファイル、以降は1行に1つの引数です。自分のエンジン（例: Vulkan版 llama-server）を指定できます。EchoBird が接続できるよう --host / --port は変更しないでください。',
+  'server.customCmdReset': 'デフォルトに戻す',
   'server.upgradeEngine': 'エンジン更新',
   'server.downloading': 'ダウンロード中',
   'store.add': '[+追加]',

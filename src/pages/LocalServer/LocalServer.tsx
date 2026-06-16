@@ -12,6 +12,7 @@ import {
   Loader2,
   HardDrive,
   FolderOpen,
+  Settings,
 } from 'lucide-react';
 import { MiniSelect } from '../../components/MiniSelect';
 import { useI18n } from '../../hooks/useI18n';
@@ -225,6 +226,10 @@ export const LocalServerMain: React.FC = () => {
   const showVersionPicker = isWindows && hasNvidiaGpu && runtime === 'llama-server';
   const [engineOptions, setEngineOptions] = useState<api.LlamaReleaseOption[]>([]);
   const [enginePickerOpen, setEnginePickerOpen] = useState(false);
+  // Gear dialog: full-command override for the llama-server launch.
+  const [customCmdOpen, setCustomCmdOpen] = useState(false);
+  const [customCmdText, setCustomCmdText] = useState('');
+  const [defaultCmdText, setDefaultCmdText] = useState('');
 
   // Get engine download progress from global DownloadContext (single source of truth)
   // Key: use runtime name so progress matches the current engine being installed
@@ -429,6 +434,59 @@ export const LocalServerMain: React.FC = () => {
     }
   };
 
+  // Gear dialog handlers. The command is one token per line (line 1 = the
+  // executable). Opening prefills with the stored custom command if any, else
+  // the auto default; save stores it (empty = clear); reset clears + restores
+  // the default text. The backend spawns a stored command verbatim, so this is
+  // how an AMD user points at their own Vulkan llama-server build.
+  const cmdToText = (c: { exe: string; args: string[] }) => [c.exe, ...c.args].join('\n');
+
+  const openCustomCmd = async () => {
+    if (!selectedModelPath) return;
+    try {
+      const def = await api.getLlmDefaultCommand(
+        selectedModelPath,
+        serverPort,
+        gpuLayers,
+        contextSize
+      );
+      setDefaultCmdText(cmdToText(def));
+      const custom = await api.getLlmCustomCommand(selectedModelPath);
+      setCustomCmdText(cmdToText(custom ?? def));
+      setCustomCmdOpen(true);
+    } catch (e) {
+      setLogs((prev) => [...prev, `[Error] ${e}`]);
+    }
+  };
+
+  const saveCustomCmd = async () => {
+    if (!selectedModelPath) return;
+    const lines = customCmdText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    try {
+      if (lines.length === 0) {
+        await api.clearLlmCustomCommand(selectedModelPath);
+      } else {
+        await api.setLlmCustomCommand(selectedModelPath, lines[0], lines.slice(1));
+      }
+      setCustomCmdOpen(false);
+    } catch (e) {
+      setLogs((prev) => [...prev, `[Error] ${e}`]);
+    }
+  };
+
+  const resetCustomCmd = async () => {
+    if (!selectedModelPath) return;
+    try {
+      await api.clearLlmCustomCommand(selectedModelPath);
+      setCustomCmdText(defaultCmdText);
+    } catch (e) {
+      setLogs((prev) => [...prev, `[Error] ${e}`]);
+    }
+  };
+
   // Render START button (state machine)
   const renderStartButton = () => {
     // Shared button styles — solid fill matching AppManager launch button
@@ -482,6 +540,22 @@ export const LocalServerMain: React.FC = () => {
       </button>
     );
 
+    // Gear: custom launch command. Only meaningful for an installed
+    // llama-server engine with a model selected (the default command can't be
+    // built otherwise); null in every other state so it doesn't show.
+    const canCustomize =
+      !!selectedModelPath &&
+      runtime === 'llama-server' &&
+      (engineStatus === 'ready' || engineStatus === 'update-available');
+    const gearBtn = canCustomize ? (
+      <button
+        onClick={openCustomCmd}
+        className={`py-3 px-3 ${btnBase} bg-cyber-border/60 text-cyber-text-secondary hover:text-cyber-text hover:bg-cyber-text/20`}
+      >
+        <Settings className="w-4 h-4" />
+      </button>
+    ) : null;
+
     // Engine not installed: show SETUP ENGINE button (always full-width).
     // On click, Windows+NVIDIA+llama-server opens the picker modal;
     // other paths go straight to auto-latest install.
@@ -499,6 +573,7 @@ export const LocalServerMain: React.FC = () => {
               : t('server.setupEngine')}
           </button>
           {folderBtn}
+          {gearBtn}
           {startStopBtn}
         </div>
       );
@@ -523,6 +598,7 @@ export const LocalServerMain: React.FC = () => {
             </div>
           </div>
           {folderBtn}
+          {gearBtn}
           {startStopBtn}
         </div>
       );
@@ -536,6 +612,7 @@ export const LocalServerMain: React.FC = () => {
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
           {folderBtn}
+          {gearBtn}
           {startStopBtn}
         </div>
       );
@@ -585,6 +662,7 @@ export const LocalServerMain: React.FC = () => {
             )}
           </div>
           {folderBtn}
+          {gearBtn}
           {startStopBtn}
         </div>
       );
@@ -619,6 +697,7 @@ export const LocalServerMain: React.FC = () => {
           )}
         </div>
         {folderBtn}
+        {gearBtn}
         {startStopBtn}
       </div>
     );
@@ -918,6 +997,59 @@ export const LocalServerMain: React.FC = () => {
               >
                 {t('btn.cancel')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom launch command modal (gear) — full-command override + reset */}
+      {customCmdOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setCustomCmdOpen(false)}
+        >
+          <div
+            className="bg-cyber-surface border border-cyber-border rounded-lg shadow-2xl w-[600px] max-w-[92vw] max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-cyber-border/60">
+              <div className="text-base font-bold text-cyber-text">
+                {t('server.customCmdTitle')}
+              </div>
+              <div className="text-xs text-cyber-text-muted mt-1 leading-relaxed">
+                {t('server.customCmdDesc')}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+              <textarea
+                value={customCmdText}
+                onChange={(e) => setCustomCmdText(e.target.value)}
+                spellCheck={false}
+                rows={10}
+                className="w-full bg-cyber-input border border-cyber-border rounded-button px-3 py-2 text-xs text-cyber-text font-mono leading-relaxed focus:border-cyber-accent focus:outline-none resize-none"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-cyber-border/60 flex justify-between gap-2">
+              <button
+                onClick={resetCustomCmd}
+                className="px-4 py-1.5 text-sm font-mono text-cyber-text-secondary hover:text-cyber-text rounded transition-colors"
+              >
+                {t('server.customCmdReset')}
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCustomCmdOpen(false)}
+                  className="px-4 py-1.5 text-sm font-mono text-cyber-text-secondary hover:text-cyber-text rounded transition-colors"
+                >
+                  {t('btn.close')}
+                </button>
+                <button
+                  onClick={saveCustomCmd}
+                  className="px-4 py-1.5 text-sm font-mono bg-cyber-accent text-white rounded hover:bg-cyber-accent-secondary transition-colors"
+                >
+                  {t('btn.save')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

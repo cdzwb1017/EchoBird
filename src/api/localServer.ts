@@ -31,6 +31,45 @@ export async function getLlmServerLogs(): Promise<string[]> {
   return invoke('get_llm_server_logs');
 }
 
+// ─── Custom launch command (advanced / bring-your-own engine) ───
+// One executable + its args (no shell parsing — each element is verbatim).
+export interface LlamaCommand {
+  exe: string;
+  args: string[];
+}
+
+/** The auto-computed default command for a model — used to prefill the gear dialog. */
+export async function getLlmDefaultCommand(
+  modelPath: string,
+  port: number,
+  gpuLayers?: number,
+  contextSize?: number
+): Promise<LlamaCommand> {
+  return invoke('get_llm_default_command', {
+    modelPath,
+    port,
+    gpuLayers: gpuLayers ?? null,
+    contextSize: contextSize ?? null,
+  });
+}
+
+/** The user's stored custom command for a model, or null if none (auto mode). */
+export async function getLlmCustomCommand(modelPath: string): Promise<LlamaCommand | null> {
+  return invoke('get_llm_custom_command', { modelPath });
+}
+
+export async function setLlmCustomCommand(
+  modelPath: string,
+  exe: string,
+  args: string[]
+): Promise<void> {
+  return invoke('set_llm_custom_command', { modelPath, exe, args });
+}
+
+export async function clearLlmCustomCommand(modelPath: string): Promise<void> {
+  return invoke('clear_llm_custom_command', { modelPath });
+}
+
 export async function getModelsDirs(): Promise<string[]> {
   return invoke('get_models_dirs');
 }

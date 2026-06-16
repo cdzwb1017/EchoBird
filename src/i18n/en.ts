@@ -205,6 +205,10 @@ const en: Translations = {
   'server.gpuFull': '⚡ GPU Auto',
   'server.cpuOnly': '🖥 CPU Only',
   'server.setupEngine': 'SETUP ENGINE',
+  'server.customCmdTitle': 'Custom launch command',
+  'server.customCmdDesc':
+    'First line is the executable, then one argument per line. Point at your own engine build (e.g. a Vulkan llama-server) if you like. Keep --host / --port unchanged so EchoBird can reach the server.',
+  'server.customCmdReset': 'Reset to default',
   'server.upgradeEngine': 'UPGRADE ENGINE',
   'server.downloading': 'DOWNLOADING',
   // ModelStore buttons
