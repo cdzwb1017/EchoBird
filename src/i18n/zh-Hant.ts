@@ -181,6 +181,9 @@ const zhHant: Partial<Translations> = {
   'agent.codexResponsesLabel': 'Responses',
   'agent.codexResponsesHint':
     '第三方模型支援 Responses 可開啟此項，原生接入（仔細閱讀你購買模型的官方文件，是否支援 Responses 協定）',
+  'agent.claude1mLabel': '1M 上下文',
+  'agent.claude1mHint':
+    '啟用 100 萬 token 上下文視窗。僅當你設定的模型確實支援 1M 上下文時開啟，否則長對話可能超出模型真實上限而報錯。',
   'agent.installViaMother': 'AI 自動安裝',
   'tool.models': '模型',
   'tool.app': '應用',

@@ -187,6 +187,9 @@ const ja: Partial<Translations> = {
   'agent.codexResponsesLabel': 'Responses',
   'agent.codexResponsesHint':
     'サードパーティモデルが Responses に対応していれば、有効化してネイティブに接続できます。（購入したモデルの公式ドキュメントをよく読み、Responses プロトコルに対応しているか確認してください。）',
+  'agent.claude1mLabel': '1M コンテキスト',
+  'agent.claude1mHint':
+    '100万トークンのコンテキストウィンドウを使用します。設定したモデルが実際に1Mに対応している場合のみ有効化してください。そうでないと長い会話でモデルの実上限を超えエラーになることがあります。',
   'agent.installViaMother': 'AI 自動インストール',
   'tool.models': 'モデル',
   'tool.app': 'アプリ',

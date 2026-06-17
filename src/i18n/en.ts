@@ -185,6 +185,9 @@ const en: Translations = {
   'agent.codexResponsesLabel': 'Responses',
   'agent.codexResponsesHint':
     'Enable this if your third-party model supports the Responses protocol for native integration. (Carefully read the official documentation of the model you purchased to confirm whether it supports the Responses protocol.)',
+  'agent.claude1mLabel': '1M Context',
+  'agent.claude1mHint':
+    'Use the 1M-token context window. Enable only if the model you configured actually supports 1M context — otherwise a long session can exceed the model limit and error.',
   'agent.installViaMother': 'AI Auto-Install',
   // ToolCard labels
   'tool.models': 'Models',

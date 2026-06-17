@@ -131,6 +131,12 @@ export interface ApplyModelInput {
    * exclusive with `relayMode`. Other tools ignore this field.
    */
   responsesPassthrough?: boolean;
+  /**
+   * Claude-only. When true, the applied profile advertises the `[1m]` logical
+   * model variant so Claude Desktop / Claude Code budget the 1M context
+   * window. Other tools ignore this field.
+   */
+  oneMContext?: boolean;
 }
 
 // ─── App Settings Types ───

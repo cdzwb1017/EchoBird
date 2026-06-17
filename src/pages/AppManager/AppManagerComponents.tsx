@@ -463,6 +463,8 @@ export const AppManagerPanel: React.FC = () => {
     setCodexResponsesPassthrough,
     claudeDesktopRelayMode,
     setClaudeDesktopRelayMode,
+    claude1mMode,
+    setClaude1mMode,
   } = useAppManager();
 
   // Relay-mode ("API Router") toggle: shown for Codex CLI / Codex Desktop
@@ -482,6 +484,8 @@ export const AppManagerPanel: React.FC = () => {
   const showResponsesToggle = isCodexApp;
   const relayModeValue = isClaudeDesktopApp ? claudeDesktopRelayMode : codexRelayMode;
   const setRelayModeValue = isClaudeDesktopApp ? setClaudeDesktopRelayMode : setCodexRelayMode;
+  // 1M-context toggle: Claude Desktop now (Claude Code in a later step).
+  const show1mToggle = isClaudeDesktopApp;
 
   return (
     <>
@@ -510,6 +514,14 @@ export const AppManagerPanel: React.FC = () => {
               hint={t('agent.codexResponsesHint')}
               checked={codexResponsesPassthrough}
               onChange={setCodexResponsesPassthrough}
+            />
+          )}
+          {show1mToggle && (
+            <RoutingToggle
+              label={t('agent.claude1mLabel')}
+              hint={t('agent.claude1mHint')}
+              checked={claude1mMode}
+              onChange={setClaude1mMode}
             />
           )}
           <RoutingToggle

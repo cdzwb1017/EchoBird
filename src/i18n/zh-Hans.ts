@@ -161,6 +161,9 @@ const zhHans: Partial<Translations> = {
   'agent.codexResponsesLabel': 'Responses',
   'agent.codexResponsesHint':
     '第三方模型支持 Responses 可开启此项，原生接入（仔细阅读你购买模型的官方文档，是否支持 Responses 协议）',
+  'agent.claude1mLabel': '1M 上下文',
+  'agent.claude1mHint':
+    '启用 100 万 token 上下文窗口。仅当你配置的模型确实支持 1M 上下文时开启，否则长会话可能超出模型真实上限而报错。',
   'agent.installViaMother': 'AI 自动安装',
   'tool.models': '模型',
   'tool.app': '应用',

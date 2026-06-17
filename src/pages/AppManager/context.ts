@@ -43,6 +43,10 @@ export interface AppManagerContextType {
    *  two apps target different protocols / different relay-station compat. */
   claudeDesktopRelayMode: boolean;
   setClaudeDesktopRelayMode: (v: boolean) => void;
+  /** Claude 1M-context toggle (Claude Desktop; Claude Code later). When on, the
+   *  applied profile uses the `[1m]` model variant so Claude budgets 1M. */
+  claude1mMode: boolean;
+  setClaude1mMode: (v: boolean) => void;
   // Launch handler
   handleLaunch: () => Promise<void>;
   // Navigation — internal handler: (toolId, toolName) => fetch install info → call prop

@@ -152,6 +152,12 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
   const [codexResponsesPassthrough, setCodexResponsesPassthroughRaw] = useState<boolean>(() =>
     readBool('echobird_codex_responses_passthrough', false)
   );
+  // Claude 1M-context toggle (Claude Desktop; Claude Code in a later step).
+  // When on, the applied profile advertises the `[1m]` model variant so Claude
+  // budgets the 1M window. Persisted per-machine; default off.
+  const [claude1mMode, setClaude1mModeRaw] = useState<boolean>(() =>
+    readBool('echobird_claude_1m_mode', false)
+  );
 
   // Tool model config (single selection - one model per tool)
   const [toolModelConfig, setToolModelConfig] = useState<Record<string, string | null>>({
@@ -181,7 +187,8 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
     toolId: string,
     internalId: string,
     relayOverride?: boolean,
-    passthroughOverride?: boolean
+    passthroughOverride?: boolean,
+    oneMOverride?: boolean
   ): Promise<true | string | false> => {
     const model = userModels.find((m) => m.internalId === internalId);
     if (!model) {
@@ -218,6 +225,8 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
     // the backend as both-true even if a caller passes an inconsistent pair.
     const effectivePassthrough =
       isCodexApp && !effectiveRelay && (passthroughOverride ?? codexResponsesPassthrough);
+    // 1M context is Claude-only (Claude Desktop now; Claude Code in a later step).
+    const effective1m = isClaudeDesktopApp && (oneMOverride ?? claude1mMode);
 
     try {
       const result = await api.applyModelToTool(toolId, {
@@ -229,6 +238,7 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
         protocol: selectedProtocol,
         ...(isRelayCapableApp ? { relayMode: effectiveRelay } : {}),
         ...(isCodexApp ? { responsesPassthrough: effectivePassthrough } : {}),
+        ...(isClaudeDesktopApp ? { oneMContext: effective1m } : {}),
       });
 
       if (result?.success) {
@@ -332,6 +342,26 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
           setApplyError(typeof result === 'string' ? result : t('key.destroyed'));
         }
       });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toolModelConfig, t, userModels]
+  );
+
+  // Claude 1M-context toggle (Claude Desktop; Claude Code in a later step).
+  // Re-applies on flip so the [1m] variant lands immediately.
+  const setClaude1mMode = useCallback(
+    (v: boolean) => {
+      setClaude1mModeRaw(v);
+      writeBool('echobird_claude_1m_mode', v);
+      const pendingInternalId = toolModelConfig['claudedesktop'];
+      if (!pendingInternalId || isOfficialModelSentinel(pendingInternalId)) return;
+      void applyModelConfig('claudedesktop', pendingInternalId, undefined, undefined, v).then(
+        (result) => {
+          if (result !== true) {
+            setApplyError(typeof result === 'string' ? result : t('key.destroyed'));
+          }
+        }
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [toolModelConfig, t, userModels]
@@ -472,6 +502,8 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
         setCodexResponsesPassthrough,
         claudeDesktopRelayMode,
         setClaudeDesktopRelayMode,
+        claude1mMode,
+        setClaude1mMode,
         handleLaunch,
         onGoToMother: handleGoToMother,
         aiInstallableIds,
