@@ -617,6 +617,56 @@
     ]
   },
   {
+    "id": "gemma-4-12b-coder-fable5",
+    "name": "Gemma 4 12B Coder (Fable 5)",
+    "icon": "google",
+    "description": "Gemma 4 12B fine-tuned for Python coding — distilled from verified, test-passing chain-of-thought (Composer 2.5 primary + Claude Fable 5 corrective). Reasons through edge cases, then emits runnable code; 256K context, runs from ~5 GB VRAM",
+    "huggingfaceRepo": "yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF",
+    "variants": [
+      {
+        "quantization": "Q2_K",
+        "fileName": "gemma4-coding-Q2_K.gguf",
+        "files": [
+          "gemma4-coding-Q2_K.gguf"
+        ],
+        "fileSize": 4830147104,
+        "recommendedVRAM": "6 GB"
+      },
+      {
+        "quantization": "Q4_K_M",
+        "fileName": "gemma4-coding-Q4_K_M.gguf",
+        "files": [
+          "gemma4-coding-Q4_K_M.gguf"
+        ],
+        "fileSize": 7381381664,
+        "recommendedVRAM": "10 GB"
+      },
+      {
+        "quantization": "Q6_K",
+        "fileName": "gemma4-coding-Q6_K.gguf",
+        "files": [
+          "gemma4-coding-Q6_K.gguf"
+        ],
+        "fileSize": 9786020384,
+        "recommendedVRAM": "12 GB"
+      },
+      {
+        "quantization": "Q8_0",
+        "fileName": "gemma4-coding-Q8_0.gguf",
+        "files": [
+          "gemma4-coding-Q8_0.gguf"
+        ],
+        "fileSize": 12669645344,
+        "recommendedVRAM": "16 GB"
+      }
+    ],
+    "runtimes": [
+      "llama-server",
+      "vllm",
+      "sglang"
+    ]
+  },
+  {
     "id": "qwen3.5-9b",
     "name": "Qwen3.5 9B",
     "icon": "qwen",
@@ -698,6 +748,47 @@
           "Negentropy-claude-opus-4.7-9B-Q8_0.gguf"
         ],
         "fileSize": 9527501952,
+        "recommendedVRAM": "12 GB"
+      }
+    ],
+    "runtimes": [
+      "llama-server",
+      "vllm",
+      "sglang"
+    ]
+  },
+  {
+    "id": "qwable-fable-5-9b",
+    "name": "Qwable 9B (Fable 5 Distill)",
+    "icon": "qwen",
+    "description": "Qwen3.5 9B distilled from Claude Fable 5 reasoning traces — multimodal (vision) + agentic-coding focus, frontier teacher on an 8 GB VRAM budget",
+    "huggingfaceRepo": "empero-ai/Qwable-9B-Claude-Fable-5-GGUF",
+    "variants": [
+      {
+        "quantization": "Q4_K_M",
+        "fileName": "Qwable-9B-Claude-Fable-5-Q4_K_M.gguf",
+        "files": [
+          "Qwable-9B-Claude-Fable-5-Q4_K_M.gguf"
+        ],
+        "fileSize": 5629108960,
+        "recommendedVRAM": "8 GB"
+      },
+      {
+        "quantization": "Q6_K",
+        "fileName": "Qwable-9B-Claude-Fable-5-Q6_K.gguf",
+        "files": [
+          "Qwable-9B-Claude-Fable-5-Q6_K.gguf"
+        ],
+        "fileSize": 7359259360,
+        "recommendedVRAM": "10 GB"
+      },
+      {
+        "quantization": "Q8_0",
+        "fileName": "Qwable-9B-Claude-Fable-5-Q8_0.gguf",
+        "files": [
+          "Qwable-9B-Claude-Fable-5-Q8_0.gguf"
+        ],
+        "fileSize": 9527501536,
         "recommendedVRAM": "12 GB"
       }
     ],
