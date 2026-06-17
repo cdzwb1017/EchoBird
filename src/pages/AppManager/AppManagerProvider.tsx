@@ -344,8 +344,12 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
         }
       });
     },
+    // claude1mMode is a real dep: re-applying claudedesktop reads it through the
+    // captured applyModelConfig (oneMOverride defaults to it). Without it here,
+    // flipping API Router after the 1M toggle re-writes the profile with a STALE
+    // 1M flag. (applyModelConfig stays excluded — it's recreated every render.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolModelConfig, t, userModels]
+    [toolModelConfig, t, userModels, claude1mMode]
   );
 
   // Claude 1M-context toggle (Claude Desktop; Claude Code in a later step).
@@ -368,8 +372,12 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
         );
       }
     },
+    // claudeDesktopRelayMode is a real dep: re-applying claudedesktop reads it
+    // through the captured applyModelConfig (relayOverride=undefined here).
+    // Without it, flipping the 1M toggle after API Router re-writes the profile
+    // with a STALE relay flag, silently reverting the user's API Router setting.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolModelConfig, t, userModels]
+    [toolModelConfig, t, userModels, claudeDesktopRelayMode]
   );
 
   // Restore = delete the tool's config file. The tool itself regenerates
