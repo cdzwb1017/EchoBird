@@ -561,13 +561,17 @@ export const LocalServerMain: React.FC = () => {
     // so a custom command lets a no-engine user run their own build. The model
     // is always selectedModelPath (a hand-typed -m is adopted into it on save),
     // so that half is unchanged.
+    // A saved custom command only applies to the llama-server runtime (that's
+    // the only runtime its gear is shown on and the only engine it overrides),
+    // so it must not enable START on vllm/sglang where it doesn't apply.
+    const customCmdUsable = hasCustomCmd && runtime === 'llama-server';
     const disabledStart =
       !isRunning &&
       (!selectedModelPath ||
-        (engineStatus === 'not-installed' && !hasCustomCmd) ||
+        (engineStatus === 'not-installed' && !customCmdUsable) ||
         engineStatus === 'downloading' ||
         engineStatus === 'checking' ||
-        (engineStatus === 'error' && !hasCustomCmd));
+        (engineStatus === 'error' && !customCmdUsable));
     const btnBase =
       'font-bold text-base font-mono transition-all flex items-center justify-center gap-2 flex-shrink-0 rounded-lg';
     // No border on active — `btnDisabled` and `btnStop` don't carry one,
