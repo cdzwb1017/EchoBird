@@ -11,7 +11,45 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # Create the GitHub release ONCE, up front, so the matrix build jobs below
+  # all upload to the SAME release object. Previously each matrix job ran
+  # tauri-action with tagName/releaseDraft, and since a DRAFT release is not
+  # returned by the releases/tags/{tag} lookup tauri-action uses, the parallel
+  # jobs each failed to "find" the draft and CREATED their own — producing
+  # duplicate drafts with the 8 assets split across them (hit on v5.3.3).
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+    steps:
+      - name: Create (or reuse) the draft release
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Reuse an existing draft for this tag (safe on workflow re-runs),
+          # otherwise create one. Either path yields a single release id.
+          ID=$(gh api --paginate "repos/${REPO}/releases" \
+            --jq "[.[] | select(.tag_name == \"${TAG}\" and .draft == true)][0].id // empty")
+          if [ -z "$ID" ]; then
+            ID=$(gh api -X POST "repos/${REPO}/releases" \
+              -f tag_name="${TAG}" \
+              -f name="EchoBird ${TAG}" \
+              -f body="See the assets to download and install this version." \
+              -F draft=true -F prerelease=false --jq '.id')
+            echo "created draft release $ID"
+          else
+            echo "reusing existing draft release $ID"
+          fi
+          echo "release_id=$ID" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -114,17 +152,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'EchoBird ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download and install this version.'
-          # Stay as draft until artifacts are uploaded, renamed, and the
-          # release-notes body is filled in. The operator manually flips
-          # to public as the last step of the release flow via
-          # `gh release edit <tag> --draft=false`. Prevents users from
-          # seeing a half-built release page (no Windows .exe, no macOS
-          # Intel .dmg, etc.) while the workflow is still in flight.
-          releaseDraft: true
-          prerelease: false
+          # Upload to the single draft created by `create-release` above.
+          # Using releaseId (instead of tagName/releaseDraft) makes tauri-action
+          # upload to the EXISTING release rather than create its own — this is
+          # what removes the duplicate-draft race across the matrix. The release
+          # stays a draft (created that way) until the operator flips it public
+          # as the last step via `gh release edit <tag> --draft=false`.
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
 
   rename-assets:
