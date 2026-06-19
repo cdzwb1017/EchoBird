@@ -1,5 +1,5 @@
 {
-  "version": "5.3.2",
+  "version": "5.3.3",
   "releaseDate": "2026-06-19",
-  "releaseNotes": "## 中文\n\n- 修复:界面异常不再白屏,改为可恢复的错误页(崩溃兜底,可复制错误 + 重新加载)。\n- Codex:折叠的推理摘要不再重复前面内容。\n- 识别并启动 Codex 桌面端 Beta(MSIX)包,桌面端检测更稳健。\n- 本地模型库:GLM 5.1 → 5.2,新增 Gemma 4 12B Coder。\n\n## English\n\n- Fix: a UI error now shows a recoverable error page instead of a blank window (crash floor; copy error + reload).\n- Codex: collapsed reasoning summaries no longer repeat earlier content.\n- Detect + launch the Codex Desktop Beta (MSIX) package; more robust desktop detection.\n- Local model store: GLM 5.1 → 5.2, add Gemma 4 12B Coder.\n\n## 日本語\n\n- 修正:UI エラーで白画面にならず、復帰可能なエラー画面を表示(クラッシュフロア)。\n- Codex:折りたたみの推論サマリが前の内容を繰り返さないように。\n- Codex デスクトップ Beta(MSIX)パッケージの検出と起動に対応、検出の堅牢性を向上。\n- ローカルモデルストア:GLM 5.1 → 5.2、Gemma 4 12B Coder を追加。"
+  "releaseNotes": "## 中文\n\n- 修复:部分较旧 macOS / Linux 上聊天 / Markdown 渲染导致的白屏。\n- 出错时显示可恢复的错误页(按系统语言),不再白屏。\n- 复制更稳健:修复部分系统上「复制失败」(含反馈页日志复制)。\n\n## English\n\n- Fix: white screen from chat / Markdown rendering on some older macOS / Linux.\n- On error, show a recoverable error page (in your language) instead of a blank screen.\n- More robust clipboard copy; fixes \"copy failed\" on some systems (incl. the Feedback log-copy).\n\n## 日本語\n\n- 修正:一部の古い macOS / Linux でのチャット / Markdown 表示による白画面。\n- エラー時に白画面ではなく、復帰可能なエラー画面(言語対応)を表示。\n- クリップボードのコピーを堅牢化、一部環境の「コピー失敗」を修正。"
 }
