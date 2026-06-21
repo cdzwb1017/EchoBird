@@ -62,11 +62,6 @@ export interface ModelDirectoryEntry {
   baseUrl: string;
   anthropicUrl: string;
   modelId: string;
-  // Optional multi-model list. When ≥2, the Add-Model modal shows a quick-pick
-  // dropdown (defaults to modelId, else the first listed id). Absent → single
-  // prefill, no dropdown. Lets aggregator/platform vendors expose all their
-  // model ids without an app release (served from the remote directory).
-  modelIds?: string[];
   region: 'cn' | 'global';
 }
 

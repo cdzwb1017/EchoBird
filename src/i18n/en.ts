@@ -107,7 +107,6 @@ const en: Translations = {
   'model.name': 'Name',
   'model.apiKey': 'API Key',
   'model.modelId': 'Model ID',
-  'model.modelIdPlaceholder': 'Search or enter model ID…',
   'model.openaiUrl': 'OpenAI URL',
   'model.anthropicUrl': 'Anthropic URL',
   'model.editConfig': 'EDIT MODEL CONFIG',

@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager';
 import { X, Box, ExternalLink, Plus, Lock, Unlock, ClipboardCopy } from 'lucide-react';
-import { ModelCard, ModelCardSkeleton, getModelIcon, ModelIdCombobox } from '../../components';
+import { ModelCard, ModelCardSkeleton, getModelIcon } from '../../components';
 import { useI18n } from '../../hooks/useI18n';
 import * as api from '../../api/tauri';
 import type { ModelConfig } from '../../api/types';
@@ -489,12 +489,6 @@ type DirectoryEntry = {
   baseUrl: string;
   anthropicUrl: string;
   modelId: string;
-  // Optional list of model ids this vendor serves on the same endpoint (e.g.
-  // Volcengine exposes many). When present (≥2), clicking the row surfaces a
-  // dropdown in the Add-Model modal so users pick instead of hand-typing.
-  // model id list is the same across the OpenAI/Anthropic endpoints, so no
-  // per-protocol split is needed.
-  modelIds?: string[];
   region: 'cn' | 'global';
 };
 
@@ -616,15 +610,12 @@ export function ModelNexusPanel() {
 
   const handleAddFromEntry = useCallback(
     (entry: DirectoryEntry) => {
-      const options = entry.modelIds ?? [];
       setNewModelForm({
         name: entry.name,
         baseUrl: entry.baseUrl,
         anthropicUrl: entry.anthropicUrl,
         apiKey: '',
-        // Default to the curated default, else the first listed id, else blank.
-        modelId: entry.modelId || options[0] || '',
-        modelIdOptions: options,
+        modelId: entry.modelId,
       });
       setEditingModelId(null);
       setShowAddModelModal(true);
@@ -774,14 +765,12 @@ export function AddModelModal() {
               <label className="block text-xs text-cyber-text-secondary mb-1">
                 {t('model.modelId')}
               </label>
-              {/* Single searchable combobox: free-type any id, with a filtered
-                  suggestion dropdown when the clicked directory entry carries a
-                  model id list. No options → plain input. */}
-              <ModelIdCombobox
+              <input
+                type="text"
+                placeholder="e.g. Qwen/Qwen-Coder"
                 value={newModelForm.modelId}
-                onChange={(v) => setNewModelForm((prev) => ({ ...prev, modelId: v }))}
-                options={newModelForm.modelIdOptions}
-                placeholder={t('model.modelIdPlaceholder')}
+                onChange={(e) => setNewModelForm((prev) => ({ ...prev, modelId: e.target.value }))}
+                className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
               />
             </div>
             <div>

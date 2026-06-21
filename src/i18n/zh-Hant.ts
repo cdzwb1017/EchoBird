@@ -114,7 +114,6 @@ const zhHant: Partial<Translations> = {
   'model.name': '名稱',
   'model.apiKey': 'API 金鑰',
   'model.modelId': '模型 ID',
-  'model.modelIdPlaceholder': '搜尋或輸入模型 ID…',
   'model.openaiUrl': 'OpenAI 位址',
   'model.anthropicUrl': 'Anthropic 位址',
   'model.editConfig': '編輯模型設定',

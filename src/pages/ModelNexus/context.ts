@@ -10,11 +10,6 @@ export interface NewModelForm {
   anthropicUrl: string;
   apiKey: string;
   modelId: string;
-  // Quick-pick model id options, carried over from a right-panel directory
-  // entry click. ≥2 options → the Add-Model modal shows a dropdown above the
-  // model id input. Absent/empty → no dropdown (manual add / edit). Purely a
-  // convenience picker; the model id input is always free-editable.
-  modelIdOptions?: string[];
 }
 
 export interface ModelNexusCtx {
