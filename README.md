@@ -40,7 +40,7 @@
     </td>
     <td>
       <a href="https://www.volcengine.com/activity/ai618?utm_campaign=hw&utm_content=hw&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=EchoBird1"><strong>火山引擎 Volcengine</strong></a><br/>
-      Thanks to <strong>Volcengine</strong> for sponsoring EchoBird! Volcengine is ByteDance's cloud platform, and its Ark Agent Plan is built for <strong>AI Coding</strong> to supercharge your dev workflow — 20,000 agent fuel credits per month plus a curated set of popular coding models. Sign up via <a href="https://www.volcengine.com/activity/ai618?utm_campaign=hw&utm_content=hw&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=EchoBird1">this link</a>: <strong>just ¥9.9 for your first month</strong> as a new user (list price ¥40).
+      Thanks to <strong>Volcengine</strong> for sponsoring EchoBird! Volcengine is ByteDance's cloud platform, and its Ark Agent Plan is built for <strong>AI Coding</strong> to supercharge your dev workflow — 20,000 agent fuel credits per month plus a curated set of popular coding models. Sign up via <a href="https://www.volcengine.com/activity/ai618?utm_campaign=hw&utm_content=hw&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=EchoBird1">this link</a>: <strong>just ¥9.9 for your first month</strong> as a new user.
     </td>
   </tr>
 </table>
