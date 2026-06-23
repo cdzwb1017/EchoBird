@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-06-23T02:09:52.988Z",
   "window_hours": 168,
-  "total_items": 4652,
+  "total_items": 4602,
   "total_items_ai_raw": 5613,
   "total_items_raw": 40255,
   "total_items_all_mode": 37488,
@@ -91,8 +91,8 @@
     {
       "site_id": "aihot",
       "site_name": "AI HOT 精选",
-      "count": 50,
-      "raw_count": 50
+      "count": 0,
+      "raw_count": 0
     },
     {
       "site_id": "echobird",
@@ -140,8 +140,8 @@
       "title": "白嫖 OpenRouter 免费模型:每天 50 次免费请求跑顶尖大模型(官方教程)",
       "url": "https://echobird.ai/openrouter/",
       "published_at": "2026-06-23T02:09:52.988Z",
-      "first_seen_at": "2026-06-23T05:40:04.195Z",
-      "last_seen_at": "2026-06-23T05:40:04.195Z",
+      "first_seen_at": "2026-06-23T07:32:49.131Z",
+      "last_seen_at": "2026-06-23T07:32:49.131Z",
       "title_original": "白嫖 OpenRouter 免费模型:每天 50 次免费请求跑顶尖大模型(官方教程)",
       "title_en": null,
       "title_zh": "白嫖 OpenRouter 免费模型:每天 50 次免费请求跑顶尖大模型(官方教程)",
@@ -170,8 +170,8 @@
       "title": "Codex 全英文插件看不懂?简体中文 Codex 插件市场导航,它来了!",
       "url": "https://echobird.cn/",
       "published_at": "2026-06-23T02:09:52.988Z",
-      "first_seen_at": "2026-06-23T05:40:04.195Z",
-      "last_seen_at": "2026-06-23T05:40:04.195Z",
+      "first_seen_at": "2026-06-23T07:32:49.131Z",
+      "last_seen_at": "2026-06-23T07:32:49.131Z",
       "title_original": "Codex 全英文插件看不懂?简体中文 Codex 插件市场导航,它来了!",
       "title_en": null,
       "title_zh": "Codex 全英文插件看不懂?简体中文 Codex 插件市场导航,它来了!",
@@ -1528,21 +1528,6 @@
       "title_bilingual": "谷歌 DeepMind 向独立制片公司 A24 注资 7500 万美元，共同研发影视 AI 工具"
     },
     {
-      "id": "84f626079d32664e7ab1fb89b54dc38b4e131ead",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "字节 Seed：Research Feed（网页内嵌数据）",
-      "title": "Seed2.1 正式发布，深入 AI 生产力",
-      "url": "https://aihot.virxact.com/items/cmqq5ns6p06scslp5dlnxluux",
-      "published_at": "2026-06-23T00:02:42.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Seed2.1 正式发布，深入 AI 生产力",
-      "title_zh": "Seed2.1 正式发布，深入 AI 生产力",
-      "title_en": null,
-      "title_bilingual": "Seed2.1 正式发布，深入 AI 生产力"
-    },
-    {
       "id": "0cf5174747e524255b08096caa151d92cb170b89",
       "site_id": "buzzing",
       "site_name": "Buzzing",
@@ -1976,21 +1961,6 @@
       "title_en": null,
       "title_zh": "亚马逊在 ChatGPT 投广告引流，却严防 AI 抓取自家商品数据",
       "title_bilingual": "亚马逊在 ChatGPT 投广告引流，却严防 AI 抓取自家商品数据"
-    },
-    {
-      "id": "778d5959a6e1289d495489fd5aa1480f0d3bd991",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Runway：News（网页）",
-      "title": "Aleph 2.0 现已集成到 Figma Weave",
-      "url": "https://aihot.virxact.com/items/cmqpu6z9y03w3slp59okauzsw",
-      "published_at": "2026-06-22T23:18:22.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Aleph 2.0 现已集成到 Figma Weave",
-      "title_zh": "Aleph 2.0 现已集成到 Figma Weave",
-      "title_en": null,
-      "title_bilingual": "Aleph 2.0 现已集成到 Figma Weave"
     },
     {
       "id": "898d2a9cd9216c5500ab5a155bf9bac928f6bcef",
@@ -3313,21 +3283,6 @@
       "title_bilingual": "别相信OpenAI，“这是最后的警告”"
     },
     {
-      "id": "67ba53555f497a4a35aed25b3137daa7d15dcb30",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Hacker News 热门（buzzing.cc 中文翻译）",
-      "title": "美国警长利用Flock车牌系统跟踪前女友案频发，Flock法务官承认\"最常见滥用\"",
-      "url": "https://aihot.virxact.com/items/cmqpqqsrw030aslp5c0jt14yr",
-      "published_at": "2026-06-22T21:32:12.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "美国警长利用Flock车牌系统跟踪前女友案频发，Flock法务官承认\"最常见滥用\"",
-      "title_zh": "美国警长利用Flock车牌系统跟踪前女友案频发，Flock法务官承认\"最常见滥用\"",
-      "title_en": null,
-      "title_bilingual": "美国警长利用Flock车牌系统跟踪前女友案频发，Flock法务官承认\"最常见滥用\""
-    },
-    {
       "id": "ea2f0e4ed748cd5ed3b24e71c99b9d08718b5dc9",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -3356,21 +3311,6 @@
       "title_en": "Runing GLM-5.2 on local hardware",
       "title_zh": "Unsloth GLM-5.2 – 如何在本地运行",
       "title_bilingual": "Unsloth GLM-5.2 – 如何在本地运行 / Runing GLM-5.2 on local hardware"
-    },
-    {
-      "id": "1771a8c65591d2714ced4bed3631dcdcf1740765",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Claude：Blog（网页）",
-      "title": "在 AWS、Google Cloud 和 Microsoft Foundry 上使用完整版 Claude Desktop",
-      "url": "https://aihot.virxact.com/items/cmqppyj5702txslp5d7ahupmr",
-      "published_at": "2026-06-22T21:19:56.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "在 AWS、Google Cloud 和 Microsoft Foundry 上使用完整版 Claude Desktop",
-      "title_zh": "在 AWS、Google Cloud 和 Microsoft Foundry 上使用完整版 Claude Desktop",
-      "title_en": null,
-      "title_bilingual": "在 AWS、Google Cloud 和 Microsoft Foundry 上使用完整版 Claude Desktop"
     },
     {
       "id": "fa7b3c6cedaa088573ae964737d822a6d3174087",
@@ -3521,21 +3461,6 @@
       "title_en": null,
       "title_zh": "Show HN: Git Issues——面向 AI 代理的版本化任务管理",
       "title_bilingual": "Show HN: Git Issues——面向 AI 代理的版本化任务管理"
-    },
-    {
-      "id": "4316735e340748aaa3fc404495b836fee91d49ec",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Hacker News 热门（buzzing.cc 中文翻译）",
-      "title": "Show HN：Oak--专为代理设计的 Git 替代方案",
-      "url": "https://aihot.virxact.com/items/cmqppo7c402qnslp5p92n6y3b",
-      "published_at": "2026-06-22T21:00:09.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Show HN：Oak--专为代理设计的 Git 替代方案",
-      "title_zh": "Show HN：Oak--专为代理设计的 Git 替代方案",
-      "title_en": null,
-      "title_bilingual": "Show HN：Oak--专为代理设计的 Git 替代方案"
     },
     {
       "id": "b69d4c8b9b2b5d1ad867464a47ef98c3c08d2d69",
@@ -4753,21 +4678,6 @@
       "title_bilingual": "内存危机日益严重，就连老款内存的价格也飙升到了天价。 / Memory crisis is getting so bad that even retro RAM prices are going to the Moon"
     },
     {
-      "id": "10d6a643984a0d6c85a79b8bb8757f9ab884546a",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenRouter：Announcements（RSS）",
-      "title": "AI 治理清单：LLM 架构先行",
-      "url": "https://aihot.virxact.com/items/cmqpyc83704y0slp54f6dv3w7",
-      "published_at": "2026-06-22T19:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "AI 治理清单：LLM 架构先行",
-      "title_zh": "AI 治理清单：LLM 架构先行",
-      "title_en": null,
-      "title_bilingual": "AI 治理清单：LLM 架构先行"
-    },
-    {
       "id": "cb4d974542cd716072b4d705a074d78451f814b6",
       "site_id": "buzzing",
       "site_name": "Buzzing",
@@ -4841,21 +4751,6 @@
       "title_en": null,
       "title_zh": "Ask HN: 从后端开发转向图形编程",
       "title_bilingual": "Ask HN: 从后端开发转向图形编程"
-    },
-    {
-      "id": "6394d68eec6f61cff02b6c93234e54bde9ee4796",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "TechCrunch：AI（RSS）",
-      "title": "Google DeepMind 7500 万美元投资 A24，合作开发电影 AI 工具",
-      "url": "https://aihot.virxact.com/items/cmqpl4smd01j1slp5npj3krmn",
-      "published_at": "2026-06-22T18:49:44.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Google DeepMind 7500 万美元投资 A24，合作开发电影 AI 工具",
-      "title_zh": "Google DeepMind 7500 万美元投资 A24，合作开发电影 AI 工具",
-      "title_en": null,
-      "title_bilingual": "Google DeepMind 7500 万美元投资 A24，合作开发电影 AI 工具"
     },
     {
       "id": "e5ea2ef7b548f931303e200c29d3757641252895",
@@ -5308,21 +5203,6 @@
       "title_bilingual": "蒸汽机 / Steam Machine"
     },
     {
-      "id": "fdc80f6a8ab7b3f3e152d64f1b747da5d11d5482",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Google Developers Blog（RSS）",
-      "title": "Google ADK 与 A2A 协议：跨语言多智能体团队构建实战",
-      "url": "https://aihot.virxact.com/items/cmqpgzgfq00hislp5hwlbgz0h",
-      "published_at": "2026-06-22T17:08:43.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Google ADK 与 A2A 协议：跨语言多智能体团队构建实战",
-      "title_zh": "Google ADK 与 A2A 协议：跨语言多智能体团队构建实战",
-      "title_en": null,
-      "title_bilingual": "Google ADK 与 A2A 协议：跨语言多智能体团队构建实战"
-    },
-    {
       "id": "9afffbc8f346a76ad84320e41cc9b47e20e37cad",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -5546,36 +5426,6 @@
       "title_en": null,
       "title_zh": "我已经提交了150多个PR，还曾一天之内开发出AI代理——但我还是找不到工作",
       "title_bilingual": "我已经提交了150多个PR，还曾一天之内开发出AI代理——但我还是找不到工作"
-    },
-    {
-      "id": "59596e36fc0680ae6717282b7a719629757a6b7f",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@berryxia",
-      "title": "东京 AI 公司 Sakana AI 推出多智能体编排系统 Sakana Fugu",
-      "url": "https://aihot.virxact.com/items/cmqpez1uu001gslp5j4h23mih",
-      "published_at": "2026-06-22T16:11:41.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "东京 AI 公司 Sakana AI 推出多智能体编排系统 Sakana Fugu",
-      "title_zh": "东京 AI 公司 Sakana AI 推出多智能体编排系统 Sakana Fugu",
-      "title_en": null,
-      "title_bilingual": "东京 AI 公司 Sakana AI 推出多智能体编排系统 Sakana Fugu"
-    },
-    {
-      "id": "0edc6363e30fbaef78a176b586015af6d0f98151",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Google Developers Blog（RSS）",
-      "title": "Google Labs 提出用\"洞察策略\"评估 AI 编码智能体的主动性",
-      "url": "https://aihot.virxact.com/items/cmqpeu90600l4sldksepc49lt",
-      "published_at": "2026-06-22T16:08:41.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Google Labs 提出用\"洞察策略\"评估 AI 编码智能体的主动性",
-      "title_zh": "Google Labs 提出用\"洞察策略\"评估 AI 编码智能体的主动性",
-      "title_en": null,
-      "title_bilingual": "Google Labs 提出用\"洞察策略\"评估 AI 编码智能体的主动性"
     },
     {
       "id": "6d75e484ceade001f84b9aaa7481f8496ab634cb",
@@ -5816,21 +5666,6 @@
       "title_en": "Microsoft's Satya Nadella: We Can't Let AI Giants Eat the Economy",
       "title_zh": "微软萨蒂亚·纳德拉：我们不能让人工智能巨头吞噬经济",
       "title_bilingual": "微软萨蒂亚·纳德拉：我们不能让人工智能巨头吞噬经济 / Microsoft's Satya Nadella: We Can't Let AI Giants Eat the Economy"
-    },
-    {
-      "id": "baac89bf2012a40617227044017c3687ed2ca12e",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "IT之家（RSS）",
-      "title": "开辟新赛道：小米 YU7 GT 创全球首个纽北自动驾驶圈速纪录，官方圈速榜新增\"自动驾驶\"分类",
-      "url": "https://aihot.virxact.com/items/cmqpepyo500j1sldkfj5exgj8",
-      "published_at": "2026-06-22T15:13:29.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "开辟新赛道：小米 YU7 GT 创全球首个纽北自动驾驶圈速纪录，官方圈速榜新增\"自动驾驶\"分类",
-      "title_zh": "开辟新赛道：小米 YU7 GT 创全球首个纽北自动驾驶圈速纪录，官方圈速榜新增\"自动驾驶\"分类",
-      "title_en": null,
-      "title_bilingual": "开辟新赛道：小米 YU7 GT 创全球首个纽北自动驾驶圈速纪录，官方圈速榜新增\"自动驾驶\"分类"
     },
     {
       "id": "03f1a1d0ab52af3f52c8cf9508623f680f66effa",
@@ -6583,21 +6418,6 @@
       "title_bilingual": "你属于哪种人工智能辅助开发者？来做个测评吧。"
     },
     {
-      "id": "b00abd2340d939850326b443257bcd11aff8a24c",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenRouter：Announcements（RSS）",
-      "title": "OpenRouter：通过API路由实现AI数据驻留合规",
-      "url": "https://aihot.virxact.com/items/cmqpyc83704y1slp584b2av9b",
-      "published_at": "2026-06-22T15:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "OpenRouter：通过API路由实现AI数据驻留合规",
-      "title_zh": "OpenRouter：通过API路由实现AI数据驻留合规",
-      "title_en": null,
-      "title_bilingual": "OpenRouter：通过API路由实现AI数据驻留合规"
-    },
-    {
       "id": "b528dcbab71a83ebdc02d1cd13911b08d99a34c9",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -7333,21 +7153,6 @@
       "title_bilingual": "智谱万亿了，DeepSeek还会远吗？"
     },
     {
-      "id": "51f7f05fc140215e872310a57899173eb6513fe8",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "公众号：数字生命卡兹克",
-      "title": "微信Agent小微灰度内测：主入口发消息红包，子入口可读聊天记录",
-      "url": "https://aihot.virxact.com/items/cmqpbc21e08laslx6gica1m67",
-      "published_at": "2026-06-22T13:34:14.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "微信Agent小微灰度内测：主入口发消息红包，子入口可读聊天记录",
-      "title_zh": "微信Agent小微灰度内测：主入口发消息红包，子入口可读聊天记录",
-      "title_en": null,
-      "title_bilingual": "微信Agent小微灰度内测：主入口发消息红包，子入口可读聊天记录"
-    },
-    {
       "id": "6362a26d889d896548fb3231f70ce323c26b786d",
       "site_id": "iris",
       "site_name": "Info Flow",
@@ -7436,36 +7241,6 @@
       "title_en": null,
       "title_zh": "Anthropic 工程负责人：Claude Code 让程序员更孤独",
       "title_bilingual": "Anthropic 工程负责人：Claude Code 让程序员更孤独"
-    },
-    {
-      "id": "f7f0e96f974f247878b42632fd109c8949f28a22",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "IT之家（RSS）",
-      "title": "Anthropic 工程负责人：Claude Code 让程序员更孤独",
-      "url": "https://aihot.virxact.com/items/cmqpaflwr08cpslx6umzww19d",
-      "published_at": "2026-06-22T13:25:46.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Anthropic 工程负责人：Claude Code 让程序员更孤独",
-      "title_zh": "Anthropic 工程负责人：Claude Code 让程序员更孤独",
-      "title_en": null,
-      "title_bilingual": "Anthropic 工程负责人：Claude Code 让程序员更孤独"
-    },
-    {
-      "id": "7584c73089978bca682c72fd71b3537fe749904b",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Hugging Face：Blog（RSS）",
-      "title": "PP-OCRv6 on Hugging Face：50 语言 OCR，参数规模 1.5M 至 34.5M",
-      "url": "https://aihot.virxact.com/items/cmqpamzm108huslx6vf1oonz9",
-      "published_at": "2026-06-22T13:18:56.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "PP-OCRv6 on Hugging Face：50 语言 OCR，参数规模 1.5M 至 34.5M",
-      "title_zh": "PP-OCRv6 on Hugging Face：50 语言 OCR，参数规模 1.5M 至 34.5M",
-      "title_en": null,
-      "title_bilingual": "PP-OCRv6 on Hugging Face：50 语言 OCR，参数规模 1.5M 至 34.5M"
     },
     {
       "id": "3a135adce781942fa44a11786009db04c1a6f8ff",
@@ -8008,21 +7783,6 @@
       "title_bilingual": "1991年慕尼黑：当前人工智能热潮的起源 / Munich 1991: the Roots of the Current AI Boom"
     },
     {
-      "id": "439a87a2d41959b950e841b5d000fd1cf1ef032f",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Cursor Blog",
-      "title": "Cursor 审计发现奖励黑客行为淹没模型智能提升",
-      "url": "https://aihot.virxact.com/items/cmqpi3u8v00smslp5or0d3mx7",
-      "published_at": "2026-06-22T12:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Cursor 审计发现奖励黑客行为淹没模型智能提升",
-      "title_zh": "Cursor 审计发现奖励黑客行为淹没模型智能提升",
-      "title_en": null,
-      "title_bilingual": "Cursor 审计发现奖励黑客行为淹没模型智能提升"
-    },
-    {
       "id": "3613f4656ca3533a1fb6f8396c467a6f67e5e103",
       "site_id": "iris",
       "site_name": "Info Flow",
@@ -8486,21 +8246,6 @@
       "title_en": null,
       "title_zh": "“AI生成”标签只防君子、不防小人？",
       "title_bilingual": "“AI生成”标签只防君子、不防小人？"
-    },
-    {
-      "id": "74da0e46c2abd023a7b6541fc53118f2c3af4cd2",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenAI：官网动态（RSS · 排除企业/客户案例）",
-      "title": "OpenAI 发布 Daybreak 安全工具：Codex Security 与 GPT-5.5-Cyber",
-      "url": "https://aihot.virxact.com/items/cmqph7ap700n2slp5g4tfjs46",
-      "published_at": "2026-06-22T10:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "OpenAI 发布 Daybreak 安全工具：Codex Security 与 GPT-5.5-Cyber",
-      "title_zh": "OpenAI 发布 Daybreak 安全工具：Codex Security 与 GPT-5.5-Cyber",
-      "title_en": null,
-      "title_bilingual": "OpenAI 发布 Daybreak 安全工具：Codex Security 与 GPT-5.5-Cyber"
     },
     {
       "id": "21f6ff32e2cd76583c2a622245765a51a7fd74ce",
@@ -13016,21 +12761,6 @@
       "title_en": null,
       "title_zh": "早报｜曝苹果新CEO重建设计团队/微信原生AI助手「小微」灰度上线/马斯克拿下7800亿天价薪酬",
       "title_bilingual": "早报｜曝苹果新CEO重建设计团队/微信原生AI助手「小微」灰度上线/马斯克拿下7800亿天价薪酬"
-    },
-    {
-      "id": "bb0a490847c7e803888cc24bc5ed48447503f36d",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "xAI：News（网页）",
-      "title": "Grok Build 推出 /goal 模式，支持长时间自主任务执行",
-      "url": "https://aihot.virxact.com/items/cmqpeyj07000gslp57sfgt1iu",
-      "published_at": "2026-06-22T00:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Grok Build 推出 /goal 模式，支持长时间自主任务执行",
-      "title_zh": "Grok Build 推出 /goal 模式，支持长时间自主任务执行",
-      "title_en": null,
-      "title_bilingual": "Grok Build 推出 /goal 模式，支持长时间自主任务执行"
     },
     {
       "id": "15d6fb7ee6843ac8d265b9c0d9e955fc47c420ab",
@@ -17608,21 +17338,6 @@
       "title_bilingual": "刘强东称京东所有 AI 技术都会向海外各个国家所有伙伴开放：不希望任何企业或国家形成技术壁垒，这本质上是“剥削”"
     },
     {
-      "id": "579796146b38768e3d4687999c6f078b5a5a1e4c",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@AYi_AInotes",
-      "title": "美团tabbit国际版免费接入GPT-5.5/Claude Opus 4.8等旗舰模型",
-      "url": "https://aihot.virxact.com/items/cmqnokdyn007jsl4nxazzzxp1",
-      "published_at": "2026-06-21T10:11:21.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "美团tabbit国际版免费接入GPT-5.5/Claude Opus 4.8等旗舰模型",
-      "title_zh": "美团tabbit国际版免费接入GPT-5.5/Claude Opus 4.8等旗舰模型",
-      "title_en": null,
-      "title_bilingual": "美团tabbit国际版免费接入GPT-5.5/Claude Opus 4.8等旗舰模型"
-    },
-    {
       "id": "bb915d4f0311898ee54363a608cf79354aa3d597",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -18791,21 +18506,6 @@
       "title_en": null,
       "title_zh": "即使AI生成的代码能正常运行，我也会拒绝它",
       "title_bilingual": "即使AI生成的代码能正常运行，我也会拒绝它"
-    },
-    {
-      "id": "3aedb035956647c723222361f81f4d801574ec16",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "公众号：腾讯元宝",
-      "title": "腾讯元宝父亲节活动：上传照片生成与年轻爸爸的合影",
-      "url": "https://aihot.virxact.com/items/cmqnbj6i202ndsl8hb9fghqqf",
-      "published_at": "2026-06-21T04:51:10.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "腾讯元宝父亲节活动：上传照片生成与年轻爸爸的合影",
-      "title_zh": "腾讯元宝父亲节活动：上传照片生成与年轻爸爸的合影",
-      "title_en": null,
-      "title_bilingual": "腾讯元宝父亲节活动：上传照片生成与年轻爸爸的合影"
     },
     {
       "id": "16c8a4c19330de556a68feb0246ca7a63bd75032",
@@ -24268,21 +23968,6 @@
       "title_bilingual": "育碧联合创始人克劳德·吉里莫特 (Claude Guillemot) 因飞机失事身亡 / Claude Guillemot Ubisoft Co-Founder Dead in Plane Crash"
     },
     {
-      "id": "a02e16dc902f7d00f56a2e0c6fbed290286db4e1",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@shao__meng",
-      "title": "开源教程《Deep Agents 实战》发布",
-      "url": "https://aihot.virxact.com/items/cmqmbymfe00zisl4f3pa6jwmz",
-      "published_at": "2026-06-20T12:16:16.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "开源教程《Deep Agents 实战》发布",
-      "title_zh": "开源教程《Deep Agents 实战》发布",
-      "title_en": null,
-      "title_bilingual": "开源教程《Deep Agents 实战》发布"
-    },
-    {
       "id": "348f3fa76465d984f884cfd60b8a54046196ae74",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -26036,21 +25721,6 @@
       "title_en": "What has (can) the EU Cyber Resilience Act done (do) for you?",
       "title_zh": "《欧盟网络弹性法案》为您做了（能做）什么？",
       "title_bilingual": "《欧盟网络弹性法案》为您做了（能做）什么？ / What has (can) the EU Cyber Resilience Act done (do) for you?"
-    },
-    {
-      "id": "9d117f25297fa542cf0b06750762b733bfe663ec",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@AYi_AInotes",
-      "title": "微软双向转售GPT与DeepSeek成全球最大AI中间商",
-      "url": "https://aihot.virxact.com/items/cmqm0elho009fsliiybg230vu",
-      "published_at": "2026-06-20T06:25:29.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "微软双向转售GPT与DeepSeek成全球最大AI中间商",
-      "title_zh": "微软双向转售GPT与DeepSeek成全球最大AI中间商",
-      "title_en": null,
-      "title_bilingual": "微软双向转售GPT与DeepSeek成全球最大AI中间商"
     },
     {
       "id": "c671e39e132ba7ab098910d4c80fd01ca6eb7f85",
@@ -27853,21 +27523,6 @@
       "title_bilingual": "随着中国对国产鹅肝的需求激增，法国面临着一个新的竞争对手 - Reuters"
     },
     {
-      "id": "f3dad51cdca9b88cabad939b75c5bce7e8073452",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "MarkTechPost（RSS）",
-      "title": "NVIDIA Research 发布 SpatialClaw：免训练空间推理框架",
-      "url": "https://aihot.virxact.com/items/cmqlj0jn600pdsljggy6btum5",
-      "published_at": "2026-06-19T22:51:59.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "NVIDIA Research 发布 SpatialClaw：免训练空间推理框架",
-      "title_zh": "NVIDIA Research 发布 SpatialClaw：免训练空间推理框架",
-      "title_en": null,
-      "title_bilingual": "NVIDIA Research 发布 SpatialClaw：免训练空间推理框架"
-    },
-    {
       "id": "95acb06a96afb2e6c899e82c2f44ff70e114260c",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -28151,21 +27806,6 @@
       "title_en": "The UK's new under-16 social media ban will cause more harm than it prevents",
       "title_zh": "英国新的 16 岁以下社交媒体禁令所造成的伤害将大于其所能预防的",
       "title_bilingual": "英国新的 16 岁以下社交媒体禁令所造成的伤害将大于其所能预防的 / The UK's new under-16 social media ban will cause more harm than it prevents"
-    },
-    {
-      "id": "f816d65dd1dfcd05f347bc0b4b361127cc576d27",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@rohanpaul_ai",
-      "title": "Figure机器人数首超人类员工",
-      "url": "https://aihot.virxact.com/items/cmqlgwh3f006nsljg3exh1nge",
-      "published_at": "2026-06-19T21:50:24.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Figure机器人数首超人类员工",
-      "title_zh": "Figure机器人数首超人类员工",
-      "title_en": null,
-      "title_bilingual": "Figure机器人数首超人类员工"
     },
     {
       "id": "5d410b18d879a84413c63a14c6ba5639161a86a0",
@@ -28798,21 +28438,6 @@
       "title_bilingual": "美国联邦航空管理局（FAA）如何利用人工智能预防跑道上的险情"
     },
     {
-      "id": "03d464a44201359bf99ceb5e13782d894a43cc89",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Hacker News 热门（buzzing.cc 中文翻译）",
-      "title": "JAWBONE Act：一项打击政府为压制合法网络言论而施压的新法案",
-      "url": "https://aihot.virxact.com/items/cmqlclrpp01h9sl2s1c94el8x",
-      "published_at": "2026-06-19T19:41:30.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "JAWBONE Act：一项打击政府为压制合法网络言论而施压的新法案",
-      "title_zh": "JAWBONE Act：一项打击政府为压制合法网络言论而施压的新法案",
-      "title_en": null,
-      "title_bilingual": "JAWBONE Act：一项打击政府为压制合法网络言论而施压的新法案"
-    },
-    {
       "id": "e41e0acebc2dfbf6a996812d0b9143662ee06178",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -29218,21 +28843,6 @@
       "title_bilingual": "Show HN: Pragmatiq——面向银行业基础模型的开源框架"
     },
     {
-      "id": "75022e6e5799696ce687427c6ccaf9038e8c99b0",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenRouter：Announcements（RSS）",
-      "title": "OpenRouter vs Portkey：你的团队该选哪个LLM网关？",
-      "url": "https://aihot.virxact.com/items/cmqldpkuw0011slf9a7n9u4pa",
-      "published_at": "2026-06-19T19:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "OpenRouter vs Portkey：你的团队该选哪个LLM网关？",
-      "title_zh": "OpenRouter vs Portkey：你的团队该选哪个LLM网关？",
-      "title_en": null,
-      "title_bilingual": "OpenRouter vs Portkey：你的团队该选哪个LLM网关？"
-    },
-    {
       "id": "2fca10fdc703d9fd900dd704ee885738e0757e99",
       "site_id": "buzzing",
       "site_name": "Buzzing",
@@ -29261,21 +28871,6 @@
       "title_en": null,
       "title_zh": "我原以为自己在梳理人工智能代理失败的各种情况，其实我是在描述跨层一致性。",
       "title_bilingual": "我原以为自己在梳理人工智能代理失败的各种情况，其实我是在描述跨层一致性。"
-    },
-    {
-      "id": "e89dce065267d65d7f86eea8703a46cf992b42e5",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@dotey",
-      "title": "baoyu-design Skill迭代：修复导出样式与渐变丢失问题，支持AI配图导出PPTX",
-      "url": "https://aihot.virxact.com/items/cmqlaf27b00wusl2sfbraxwid",
-      "published_at": "2026-06-19T18:43:30.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "baoyu-design Skill迭代：修复导出样式与渐变丢失问题，支持AI配图导出PPTX",
-      "title_zh": "baoyu-design Skill迭代：修复导出样式与渐变丢失问题，支持AI配图导出PPTX",
-      "title_en": null,
-      "title_bilingual": "baoyu-design Skill迭代：修复导出样式与渐变丢失问题，支持AI配图导出PPTX"
     },
     {
       "id": "16e55d25838cebd3322f10f0701b0607885963de",
@@ -29741,21 +29336,6 @@
       "title_en": null,
       "title_zh": "中央公园因马车坠落致人死亡事件暂停运营",
       "title_bilingual": "中央公园因马车坠落致人死亡事件暂停运营"
-    },
-    {
-      "id": "cab10e045542313e4e828ced5395ec0cadaa41de",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Dwarkesh Patel：Podcast & Blog（RSS）",
-      "title": "AI中心的数据黑洞",
-      "url": "https://aihot.virxact.com/items/cmql6vhtu01n0slluxpq3yvzh",
-      "published_at": "2026-06-19T16:45:03.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "AI中心的数据黑洞",
-      "title_zh": "AI中心的数据黑洞",
-      "title_en": null,
-      "title_bilingual": "AI中心的数据黑洞"
     },
     {
       "id": "155f8cf154a5eabdb417d243f576e23cd32ac839",
@@ -30373,21 +29953,6 @@
       "title_bilingual": "中国问题再度浮出水面，ASML股价下跌 - Barron's"
     },
     {
-      "id": "27a484c9daa5c1650151898630249566f5183a90",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@demishassabis",
-      "title": "AlphaFold 负责人 John Jumper 离职 Google DeepMind，加入 Anthropic",
-      "url": "https://aihot.virxact.com/items/cmql4yj5e014zsllucl69g3l6",
-      "published_at": "2026-06-19T16:07:27.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "AlphaFold 负责人 John Jumper 离职 Google DeepMind，加入 Anthropic",
-      "title_zh": "AlphaFold 负责人 John Jumper 离职 Google DeepMind，加入 Anthropic",
-      "title_en": null,
-      "title_bilingual": "AlphaFold 负责人 John Jumper 离职 Google DeepMind，加入 Anthropic"
-    },
-    {
       "id": "3de3b73830996c904ece949223a741b9bf6bb868",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -30776,21 +30341,6 @@
       "title_en": "Akse3D – open-source 3D modelling anyone can master",
       "title_zh": "Akse3D——人人都能掌握的开源3D建模软件",
       "title_bilingual": "Akse3D——人人都能掌握的开源3D建模软件 / Akse3D – open-source 3D modelling anyone can master"
-    },
-    {
-      "id": "20641fa13742447e01f72aa00b51745d44ffc854",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenRouter：Announcements（RSS）",
-      "title": "OpenRouter vs LiteLLM：如何选择 LLM 网关",
-      "url": "https://aihot.virxact.com/items/cmqldpkuw0012slf9dif29msc",
-      "published_at": "2026-06-19T15:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "OpenRouter vs LiteLLM：如何选择 LLM 网关",
-      "title_zh": "OpenRouter vs LiteLLM：如何选择 LLM 网关",
-      "title_en": null,
-      "title_bilingual": "OpenRouter vs LiteLLM：如何选择 LLM 网关"
     },
     {
       "id": "f11adad11c70a7437c391ee292b48bf1627e9ec7",
@@ -31978,21 +31528,6 @@
       "title_bilingual": "Mutter AI 听写 / Mutter AI Dictation"
     },
     {
-      "id": "21e7471dde82f594d23d84613c6ad75ebd61e00a",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Nathan Lambert：Interconnects（RSS）",
-      "title": "禁止开源AI将是一个错误",
-      "url": "https://aihot.virxact.com/items/cmqkzwabf008islcwjpwe10ii",
-      "published_at": "2026-06-19T13:02:47.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "禁止开源AI将是一个错误",
-      "title_zh": "禁止开源AI将是一个错误",
-      "title_en": null,
-      "title_bilingual": "禁止开源AI将是一个错误"
-    },
-    {
       "id": "560705caf5fc2817c70fa6a4ca497d0cec5998a5",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -32036,36 +31571,6 @@
       "title_en": null,
       "title_zh": "非美国地区的Claude用户：若曾使用《Fable》，请注意——账号被暂停的经历",
       "title_bilingual": "非美国地区的Claude用户：若曾使用《Fable》，请注意——账号被暂停的经历"
-    },
-    {
-      "id": "ab17350a40633c434ee66384d84c70dc5fae2443",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Cloudflare Blog",
-      "title": "Cloudflare 为 AI 智能体推出临时账户",
-      "url": "https://aihot.virxact.com/items/cmqkzxdp0009eslcw0jlr6pvl",
-      "published_at": "2026-06-19T13:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Cloudflare 为 AI 智能体推出临时账户",
-      "title_zh": "Cloudflare 为 AI 智能体推出临时账户",
-      "title_en": null,
-      "title_bilingual": "Cloudflare 为 AI 智能体推出临时账户"
-    },
-    {
-      "id": "79c2fbcc24513201d4711ff0a5d889974e481403",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@omarsar0, DAIR.AI",
-      "title": "/youtube-notetaker：YT 视频转 Artifacts",
-      "url": "https://aihot.virxact.com/items/cmqkxgxrb003oslu7irf0vf59",
-      "published_at": "2026-06-19T12:48:45.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "/youtube-notetaker：YT 视频转 Artifacts",
-      "title_zh": "/youtube-notetaker：YT 视频转 Artifacts",
-      "title_en": null,
-      "title_bilingual": "/youtube-notetaker：YT 视频转 Artifacts"
     },
     {
       "id": "5048d8201d93cb12a2582922add24def1a71c3ff",
@@ -32681,21 +32186,6 @@
       "title_en": null,
       "title_zh": "特朗普称，苹果将与英特尔合作在美国进行芯片设计和生产 - Fox Business",
       "title_bilingual": "特朗普称，苹果将与英特尔合作在美国进行芯片设计和生产 - Fox Business"
-    },
-    {
-      "id": "f7d376e82c613e05eebfacd3350816c6465bdfaa",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "公众号：卡尔的AI沃茨",
-      "title": "Humanize PPT v0.9：为演讲而生的开源PPT Skill",
-      "url": "https://aihot.virxact.com/items/cmqkrei4r006ssl4zm2006sdt",
-      "published_at": "2026-06-19T09:48:28.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Humanize PPT v0.9：为演讲而生的开源PPT Skill",
-      "title_zh": "Humanize PPT v0.9：为演讲而生的开源PPT Skill",
-      "title_en": null,
-      "title_bilingual": "Humanize PPT v0.9：为演讲而生的开源PPT Skill"
     },
     {
       "id": "898eb96438d87f8f98efa2f72bad04e642fd9d86",
@@ -33913,21 +33403,6 @@
       "title_bilingual": "我们在 Elasticsearch 上构建了一个持久化代理内存层，其召回率为 0.89"
     },
     {
-      "id": "5add98cfbde816eff1e16a48a65e8199470105c7",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Hacker News 热门（buzzing.cc 中文翻译）",
-      "title": "我们在 Elasticsearch 上构建了一个持久化代理内存层，其召回率为0.89",
-      "url": "https://aihot.virxact.com/items/cmqkhoy7906goslhiji2e8rc4",
-      "published_at": "2026-06-19T05:01:18.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "我们在 Elasticsearch 上构建了一个持久化代理内存层，其召回率为0.89",
-      "title_zh": "我们在 Elasticsearch 上构建了一个持久化代理内存层，其召回率为0.89",
-      "title_en": null,
-      "title_bilingual": "我们在 Elasticsearch 上构建了一个持久化代理内存层，其召回率为0.89"
-    },
-    {
       "id": "dae486d7f23494b5d7043debfdfb7c6eb34b2a70",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -33956,21 +33431,6 @@
       "title_en": null,
       "title_zh": "Agent狂奔之后：吴恩达戳破了一个所有人不愿面对的事实",
       "title_bilingual": "Agent狂奔之后：吴恩达戳破了一个所有人不愿面对的事实"
-    },
-    {
-      "id": "da9bb5eaf693b982a80375b0a7b44bc444b8d692",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@AYi_AInotes",
-      "title": "阿里开源向量数据库Zvec，UCSD黄碧薇教授提出因果AI第四代范式",
-      "url": "https://aihot.virxact.com/items/cmqkhbjf5069eslhiepqm55gr",
-      "published_at": "2026-06-19T04:49:25.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "阿里开源向量数据库Zvec，UCSD黄碧薇教授提出因果AI第四代范式",
-      "title_zh": "阿里开源向量数据库Zvec，UCSD黄碧薇教授提出因果AI第四代范式",
-      "title_en": null,
-      "title_bilingual": "阿里开源向量数据库Zvec，UCSD黄碧薇教授提出因果AI第四代范式"
     },
     {
       "id": "2d27262247372df4ec70059bf53f01067dcacf97",
@@ -34211,21 +33671,6 @@
       "title_en": null,
       "title_zh": "6000字长文：陪跑一个AI项目后，我总结了AI落地的6个生死关",
       "title_bilingual": "6000字长文：陪跑一个AI项目后，我总结了AI落地的6个生死关"
-    },
-    {
-      "id": "4ceefabd9dafa8a41d52d8989ac1547b12c0895b",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@AYi_AInotes",
-      "title": "DeepSeek研究员开源AutoResearch：AI自主跑通285B模型RL研究闭环",
-      "url": "https://aihot.virxact.com/items/cmqkf6cny05q6slhidvc7xzf4",
-      "published_at": "2026-06-19T03:58:46.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "DeepSeek研究员开源AutoResearch：AI自主跑通285B模型RL研究闭环",
-      "title_zh": "DeepSeek研究员开源AutoResearch：AI自主跑通285B模型RL研究闭环",
-      "title_en": null,
-      "title_bilingual": "DeepSeek研究员开源AutoResearch：AI自主跑通285B模型RL研究闭环"
     },
     {
       "id": "6161bf364c78ad0145300bdd9cfa1c59d57c75ee",
@@ -34646,21 +34091,6 @@
       "title_en": "Vim Creator Bram Moolenaar's Forgotten Programming Language, Zimbu (2023)",
       "title_zh": "Vim 创建者 Bram Moolenaar 那门被遗忘的编程语言——Zimbu（2023）",
       "title_bilingual": "Vim 创建者 Bram Moolenaar 那门被遗忘的编程语言——Zimbu（2023） / Vim Creator Bram Moolenaar's Forgotten Programming Language, Zimbu (2023)"
-    },
-    {
-      "id": "a2a1a10bcd97cd01337c14aec8045ae7212c5569",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "MarkTechPost（RSS）",
-      "title": "Salesforce CodeGen教程：生成、验证并重排序Python函数（含单元测试与安全检查）",
-      "url": "https://aihot.virxact.com/items/cmqkc8a7h0515slhis4sq6oxb",
-      "published_at": "2026-06-19T02:44:12.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Salesforce CodeGen教程：生成、验证并重排序Python函数（含单元测试与安全检查）",
-      "title_zh": "Salesforce CodeGen教程：生成、验证并重排序Python函数（含单元测试与安全检查）",
-      "title_en": null,
-      "title_bilingual": "Salesforce CodeGen教程：生成、验证并重排序Python函数（含单元测试与安全检查）"
     },
     {
       "id": "8290574db5103157dab7f0ceecddbda27ce2af87",
@@ -35548,21 +34978,6 @@
       "title_bilingual": "八部门联合发文加快“人工智能 + 消费”发展，扩大 AI 手机电脑及智能网联汽车消费"
     },
     {
-      "id": "723690645feacf83bc0819dace7e7bab31c3671e",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "IT之家（RSS）",
-      "title": "八部门联合发文力推\"人工智能 + 消费\"，扩大 AI 手机电脑及智能网联汽车消费",
-      "url": "https://aihot.virxact.com/items/cmqk6htvg03g1slhi1nagpabj",
-      "published_at": "2026-06-18T23:56:08.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "八部门联合发文力推\"人工智能 + 消费\"，扩大 AI 手机电脑及智能网联汽车消费",
-      "title_zh": "八部门联合发文力推\"人工智能 + 消费\"，扩大 AI 手机电脑及智能网联汽车消费",
-      "title_en": null,
-      "title_bilingual": "八部门联合发文力推\"人工智能 + 消费\"，扩大 AI 手机电脑及智能网联汽车消费"
-    },
-    {
       "id": "d3d63cd8aaf91bcd9d419ff74d956e4c8d10d46f",
       "site_id": "wechat-rss",
       "site_name": "微信公众号",
@@ -35666,21 +35081,6 @@
       "title_en": null,
       "title_zh": "什么！ChatGPT也要刷脸实名认证了?",
       "title_bilingual": "什么！ChatGPT也要刷脸实名认证了?"
-    },
-    {
-      "id": "f1bf01ffa35b2ad687ea6b40aac072a523153f5c",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "@rohanpaul_ai",
-      "title": "AI 员工 Viktor 登陆 Microsoft Teams，年化收入达 2000 万美元",
-      "url": "https://aihot.virxact.com/items/cmqk5umoz03d0slhi4qnma1r3",
-      "published_at": "2026-06-18T23:45:03.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "AI 员工 Viktor 登陆 Microsoft Teams，年化收入达 2000 万美元",
-      "title_zh": "AI 员工 Viktor 登陆 Microsoft Teams，年化收入达 2000 万美元",
-      "title_en": null,
-      "title_bilingual": "AI 员工 Viktor 登陆 Microsoft Teams，年化收入达 2000 万美元"
     },
     {
       "id": "1160d6af44ae9b9b6f26580cfa37aba87e806747",
@@ -38038,21 +37438,6 @@
       "title_bilingual": "Anthropic正与“山姆大叔”争夺对超级人工智能的控制权"
     },
     {
-      "id": "df19ea9e4bcdff4abd1fa3f7a77c7abeb0b70b45",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenRouter：Announcements（RSS）",
-      "title": "OpenClaw 接入 OpenRouter",
-      "url": "https://aihot.virxact.com/items/cmqk90yo9047eslhiuppd7ed6",
-      "published_at": "2026-06-18T19:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "OpenClaw 接入 OpenRouter",
-      "title_zh": "OpenClaw 接入 OpenRouter",
-      "title_en": null,
-      "title_bilingual": "OpenClaw 接入 OpenRouter"
-    },
-    {
       "id": "812b05a27940ddf54d3d0fb0aa5104fe35cf7c58",
       "site_id": "buzzing",
       "site_name": "Buzzing",
@@ -38278,21 +37663,6 @@
       "title_bilingual": "littlefs 的设计 / The design of littlefs"
     },
     {
-      "id": "12743f3f452078dcfbd1f864407e0b3d2390e108",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "Hugging Face：Blog（RSS）",
-      "title": "MosaicLeaks： 你的研究智能体能保守秘密吗？",
-      "url": "https://aihot.virxact.com/items/cmqjur86800bvslhi6qv1647r",
-      "published_at": "2026-06-18T18:13:13.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "MosaicLeaks： 你的研究智能体能保守秘密吗？",
-      "title_zh": "MosaicLeaks： 你的研究智能体能保守秘密吗？",
-      "title_en": null,
-      "title_bilingual": "MosaicLeaks： 你的研究智能体能保守秘密吗？"
-    },
-    {
       "id": "0312e2908695ae28d66a142371f5bec494285ae0",
       "site_id": "zeli",
       "site_name": "Zeli",
@@ -38323,21 +37693,6 @@
       "title_bilingual": "Show HN: DOS——一个在AI代理之间充当仲裁者的系统，它不相信这些代理所说的“完成”"
     },
     {
-      "id": "7e6fcb7ca414ec4f774c7a8c42901c939ec43c0a",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenAI：Alignment 研究博客（RSS）",
-      "title": "OpenAI 强化学习实现广泛且持久的有益模型",
-      "url": "https://aihot.virxact.com/items/cmqk1gfya0283slhilhufijtu",
-      "published_at": "2026-06-18T18:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "OpenAI 强化学习实现广泛且持久的有益模型",
-      "title_zh": "OpenAI 强化学习实现广泛且持久的有益模型",
-      "title_en": null,
-      "title_bilingual": "OpenAI 强化学习实现广泛且持久的有益模型"
-    },
-    {
       "id": "11d76072ce4b65e070bba653487091e223616c90",
       "site_id": "iris",
       "site_name": "Info Flow",
@@ -38351,21 +37706,6 @@
       "title_en": null,
       "title_zh": "马斯克花600亿美元，买了个中国模型底座的代码编辑器",
       "title_bilingual": "马斯克花600亿美元，买了个中国模型底座的代码编辑器"
-    },
-    {
-      "id": "e58f334f75f8816fbda462ee297d849dbbefe5bc",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "TechCrunch：AI（RSS）",
-      "title": "AI数据中心获政府强制电网快车道",
-      "url": "https://aihot.virxact.com/items/cmqjsoas006duslmh9878irin",
-      "published_at": "2026-06-18T17:49:23.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "AI数据中心获政府强制电网快车道",
-      "title_zh": "AI数据中心获政府强制电网快车道",
-      "title_en": null,
-      "title_bilingual": "AI数据中心获政府强制电网快车道"
     },
     {
       "id": "e0c6e91584fb4da53842c0d02146cffdbd39e61e",
@@ -38591,21 +37931,6 @@
       "title_en": "Wiki Spy",
       "title_zh": "维基间谍",
       "title_bilingual": "维基间谍 / Wiki Spy"
-    },
-    {
-      "id": "ecdd709740ad27559a6a302ea62af43be06c5a56",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenAI：官网动态（RSS · 排除企业/客户案例）",
-      "title": "企业版新用量分析与更新的支出控制",
-      "url": "https://aihot.virxact.com/items/cmqjvhcit00lqslhiulrfivqk",
-      "published_at": "2026-06-18T17:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "企业版新用量分析与更新的支出控制",
-      "title_zh": "企业版新用量分析与更新的支出控制",
-      "title_en": null,
-      "title_bilingual": "企业版新用量分析与更新的支出控制"
     },
     {
       "id": "db20460517a31da0c68bede69485ea82851830f1",
@@ -40393,21 +39718,6 @@
       "title_bilingual": "Uber 和 Lyft 使用人工智能为乘车定价 / Uber and Lyft Use Artificial Intelligence to Price Rides"
     },
     {
-      "id": "dff0f13fdf1b90fc20d8ec656222c41f0dbac41b",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "OpenRouter：Announcements（RSS）",
-      "title": "如何将 SillyTavern 连接到 OpenRouter（2026 指南）",
-      "url": "https://aihot.virxact.com/items/cmqk90yo9047fslhiqzp4ut7u",
-      "published_at": "2026-06-18T15:00:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "如何将 SillyTavern 连接到 OpenRouter（2026 指南）",
-      "title_zh": "如何将 SillyTavern 连接到 OpenRouter（2026 指南）",
-      "title_en": null,
-      "title_bilingual": "如何将 SillyTavern 连接到 OpenRouter（2026 指南）"
-    },
-    {
       "id": "faf1d84fe1ca29f3f7636ce8ea4e64cf0edc59f7",
       "site_id": "iris",
       "site_name": "Info Flow",
@@ -40421,21 +39731,6 @@
       "title_en": null,
       "title_zh": "科氪 | 两轮电动车没有天花板，爱玛黑翼要用AI与硬核科技赢得年轻男性的心",
       "title_bilingual": "科氪 | 两轮电动车没有天花板，爱玛黑翼要用AI与硬核科技赢得年轻男性的心"
-    },
-    {
-      "id": "b64bc2fd99c108e05c07ccc6bd05dec86d9c0cb8",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "IT之家（RSS）",
-      "title": "我国首部L3/L4自动驾驶强制性国标公示：2027年7月起实施",
-      "url": "https://aihot.virxact.com/items/cmqjn5l3e04weslmhr1vnj797",
-      "published_at": "2026-06-18T14:57:30.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "我国首部L3/L4自动驾驶强制性国标公示：2027年7月起实施",
-      "title_zh": "我国首部L3/L4自动驾驶强制性国标公示：2027年7月起实施",
-      "title_en": null,
-      "title_bilingual": "我国首部L3/L4自动驾驶强制性国标公示：2027年7月起实施"
     },
     {
       "id": "67a6bf4f8edc1b01a42d1e8aa6b920667bcec15e",
@@ -40601,21 +39896,6 @@
       "title_en": null,
       "title_zh": "我发现有1万个GitHub仓库在传播木马恶意软件",
       "title_bilingual": "我发现有1万个GitHub仓库在传播木马恶意软件"
-    },
-    {
-      "id": "44762ae52a5723f5878b26ca3a323c152290be1b",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "The Decoder：AI News（RSS）",
-      "title": "Nature两篇研究：MIRA和AMIE诊断与治疗计划媲美甚至超越医生",
-      "url": "https://aihot.virxact.com/items/cmqjmc80604sqslmhz4738b0k",
-      "published_at": "2026-06-18T14:37:06.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Nature两篇研究：MIRA和AMIE诊断与治疗计划媲美甚至超越医生",
-      "title_zh": "Nature两篇研究：MIRA和AMIE诊断与治疗计划媲美甚至超越医生",
-      "title_en": null,
-      "title_bilingual": "Nature两篇研究：MIRA和AMIE诊断与治疗计划媲美甚至超越医生"
     },
     {
       "id": "b83666b7a11ccc8ef41cc063b18bea61cf159218",
@@ -41006,21 +40286,6 @@
       "title_en": null,
       "title_zh": "章鱼动力完成新一轮 5000 万美元融资，加速构建基于世界模型的“手脑一体”物理生产力基础设施",
       "title_bilingual": "章鱼动力完成新一轮 5000 万美元融资，加速构建基于世界模型的“手脑一体”物理生产力基础设施"
-    },
-    {
-      "id": "c9d1bb00ec3e03f17e3f0054d62b988185847c6d",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "The Decoder：AI News（RSS）",
-      "title": "Adobe 为 Photoshop、Premiere 等多款 Creative Cloud 应用加入 AI 智能体",
-      "url": "https://aihot.virxact.com/items/cmqjj40zi03y2slmhpeucu9ao",
-      "published_at": "2026-06-18T12:59:00.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "Adobe 为 Photoshop、Premiere 等多款 Creative Cloud 应用加入 AI 智能体",
-      "title_zh": "Adobe 为 Photoshop、Premiere 等多款 Creative Cloud 应用加入 AI 智能体",
-      "title_en": null,
-      "title_bilingual": "Adobe 为 Photoshop、Premiere 等多款 Creative Cloud 应用加入 AI 智能体"
     },
     {
       "id": "ce33a1fb17b2cf3c1369aa3f390d81b504cb4d3f",
@@ -42146,21 +41411,6 @@
       "title_en": null,
       "title_zh": "超级会员 + AI + 1T 云盘：WPS 大会员 x 京东 PLUS 狂促 4 小时，单个单年低至 89 元",
       "title_bilingual": "超级会员 + AI + 1T 云盘：WPS 大会员 x 京东 PLUS 狂促 4 小时，单个单年低至 89 元"
-    },
-    {
-      "id": "6f661ac4d8b1e09cb12d32aa123bf73b8a68b9f0",
-      "site_id": "aihot",
-      "site_name": "AI HOT 精选",
-      "source": "IT之家（RSS）",
-      "title": "皮尤民调：63%美国人认为AI发展太快，ChatGPT使用率翻番",
-      "url": "https://aihot.virxact.com/items/cmqjgpxud036hslmhb8vvzvs7",
-      "published_at": "2026-06-18T12:11:32.000Z",
-      "first_seen_at": "2026-06-23T05:39:42.000Z",
-      "last_seen_at": "2026-06-23T05:39:42.000Z",
-      "title_original": "皮尤民调：63%美国人认为AI发展太快，ChatGPT使用率翻番",
-      "title_zh": "皮尤民调：63%美国人认为AI发展太快，ChatGPT使用率翻番",
-      "title_en": null,
-      "title_bilingual": "皮尤民调：63%美国人认为AI发展太快，ChatGPT使用率翻番"
     },
     {
       "id": "acce8c4282e5482d108b347b4990a1616270b8ab",
