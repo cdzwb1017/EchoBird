@@ -1,5 +1,5 @@
 {
-  "version": "5.3.6",
-  "releaseDate": "2026-06-24",
+  "version": "5.3.7",
+  "releaseDate": "2026-06-27",
   "releaseNotes": "## 中文\n\n- 修复 macOS 上启动 Codex、ZCode 等桌面端时被误用文本编辑器打开、无法启动应用的问题。\n- 「安装与修复」输入框现在会自动聚焦;接入配置出错时的提示更清晰。\n\n## English\n\n- Fixed launching desktop apps (Codex, ZCode, etc.) on macOS opening in a text editor instead of starting the app.\n- The install-and-repair input now auto-focuses; clearer messages when provider setup fails.\n\n## 日本語\n\n- macOS で Codex・ZCode などのデスクトップ版を起動するとアプリが立ち上がらずテキストエディタで開かれる問題を修正しました。\n- 「インストールと修復」の入力欄が自動でフォーカスされるようになり、接続設定のエラー表示も分かりやすくなりました。"
 }
