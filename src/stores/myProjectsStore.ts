@@ -8,8 +8,8 @@
 //     They render alongside user entries but can't be edited or deleted —
 //     they're system data, like the built-in models in Model Nexus.
 //
-//   • User-added entries live here, persisted to localStorage. CRUD as
-//     expected.
+//   • User-added entries live here, persisted to ~/.echobird/projects.json
+//     (via Rust get_my_projects / save_my_projects). CRUD as expected.
 //
 // On init() we run a one-time migration that strips any entry with
 // linkedToolId set — those were seeded by the previous architecture and
@@ -66,33 +66,50 @@ export const joinPath = (dir: string, file: string): string => {
   return `${trimmed}${sep}${file}`;
 };
 
-const loadFromStorage = (): MyProject[] => {
+// Defensive: an entry must carry the required fields, else we drop it rather
+// than crash on a corrupt file or a bad legacy write.
+const isValidProject = (p: unknown): p is MyProject =>
+  typeof p === 'object' &&
+  p !== null &&
+  typeof (p as MyProject).id === 'string' &&
+  typeof (p as MyProject).name === 'string' &&
+  typeof (p as MyProject).launcherPath === 'string' &&
+  typeof (p as MyProject).modelsJsonPath === 'string';
+
+// Projects USED to live in localStorage; they now persist to
+// ~/.echobird/projects.json (via Rust). A file survives a webview-storage
+// clear, is backup / hand-edit friendly, and — crucially — can be appended by
+// the "安装与修复" agent when it installs a marketplace app. This legacy reader
+// is kept ONLY to migrate old localStorage entries into the file once (init()).
+const loadLegacyProjects = (): MyProject[] => {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    // Defensive: drop entries missing required fields rather than crashing on a bad LS write.
-    return parsed.filter(
-      (p): p is MyProject =>
-        typeof p === 'object' &&
-        p !== null &&
-        typeof (p as MyProject).id === 'string' &&
-        typeof (p as MyProject).name === 'string' &&
-        typeof (p as MyProject).launcherPath === 'string' &&
-        typeof (p as MyProject).modelsJsonPath === 'string'
-    );
+    return parsed.filter(isValidProject);
   } catch {
     return [];
   }
 };
 
-const saveToStorage = (projects: MyProject[]) => {
+// Load the registry from ~/.echobird/projects.json.
+const loadProjectsFromFile = async (): Promise<MyProject[]> => {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(projects));
-  } catch {
-    /* private mode / quota — silently drop */
+    const arr = await api.getMyProjects();
+    return arr.filter(isValidProject);
+  } catch (e) {
+    console.error('[MyProjects] Failed to load projects:', e);
+    return [];
   }
+};
+
+// Persist the full registry to ~/.echobird/projects.json. Fire-and-forget: a
+// failed write must not block the optimistic in-memory update.
+const saveToStorage = (projects: MyProject[]) => {
+  void api.saveMyProjects(projects).catch((e) => {
+    console.error('[MyProjects] Failed to save projects:', e);
+  });
 };
 
 const loadHiddenBuiltins = (): BuiltinToolId[] => {
@@ -186,7 +203,7 @@ interface MyProjectsState {
   setUserProjectLaunchAfterApply: (v: boolean) => void;
   setUserProjectAgreedConfigPolicy: (v: boolean) => void;
   setLastAppliedModel: (projectId: string, modelInternalId: string) => void;
-  init: () => void;
+  init: () => Promise<void>;
   /** Idempotent — calls Rust seed_builtin_to_user_dir for each built-in
    *  present in the live tool scan, populating builtinDirs once we have a
    *  resolvable destination. The Rust side skips files the user already
@@ -245,13 +262,36 @@ export const useMyProjectsStore = create<MyProjectsState>((set, get) => ({
         [projectId]: modelInternalId,
       },
     })),
-  init: () => {
-    // Migration: strip seeded built-in entries from localStorage. They moved
-    // out of user storage when we switched to the two-table model — keeping
-    // them would render duplicates next to the computed built-ins.
-    const raw = loadFromStorage();
+  init: async () => {
+    let raw = await loadProjectsFromFile();
+    // One-time migration off the old localStorage store: only when the file is
+    // empty AND localStorage still holds entries (i.e. an upgrading user who
+    // hasn't migrated yet).
+    let migratedLegacy = false;
+    if (raw.length === 0) {
+      const legacy = loadLegacyProjects();
+      if (legacy.length > 0) {
+        raw = legacy;
+        migratedLegacy = true;
+      }
+    }
+    // Strip seeded built-in entries (linkedToolId set) — they moved out of user
+    // storage when we switched to the two-table model; keeping them would render
+    // duplicates next to the computed built-ins.
     const filtered = raw.filter((p) => !p.linkedToolId);
-    if (filtered.length !== raw.length) {
+    if (migratedLegacy) {
+      // Persist the migrated set, then drop the old localStorage copy ONLY on a
+      // successful write. Otherwise a later empty file (user deleted every
+      // project) would re-import the stale copy and resurrect them. On failure
+      // we keep localStorage so the data isn't lost and migration retries next
+      // launch.
+      try {
+        await api.saveMyProjects(filtered);
+        localStorage.removeItem(LS_KEY);
+      } catch (e) {
+        console.error('[MyProjects] localStorage→file migration failed; keeping localStorage:', e);
+      }
+    } else if (filtered.length !== raw.length) {
       saveToStorage(filtered);
     }
     try {

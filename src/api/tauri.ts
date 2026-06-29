@@ -98,6 +98,21 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   return invoke('save_settings', { settings });
 }
 
+// ─── My Projects registry (persisted to ~/.echobird/projects.json via Rust) ───
+
+/// Read the user-authored AI-project registry. The front-end (myProjectsStore)
+/// owns the MyProject shape; Rust persists the array verbatim. Returns [] when
+/// the file is missing.
+export async function getMyProjects(): Promise<unknown[]> {
+  const arr = await invoke<unknown>('get_my_projects');
+  return Array.isArray(arr) ? arr : [];
+}
+
+/// Persist the full project registry (sent on every CRUD op).
+export async function saveMyProjects(projects: unknown[]): Promise<void> {
+  return invoke('save_my_projects', { projects });
+}
+
 // ─── App Lifecycle APIs ───
 
 export async function appReady(): Promise<void> {
