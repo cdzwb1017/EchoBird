@@ -53,9 +53,11 @@ jobs:
         env:
           TAG_NAME: ${{ steps.tag.outputs.tag }}
         run: |
+          set -euo pipefail
           VERSION="${TAG_NAME#v}"
           DATE="$(date -u +%Y-%m-%d)"
           MANIFEST="docs/api/version/index.json"
+          TMP="${MANIFEST}.tmp"
           # Policy: tag annotations are English (engineering audience), the
           # release notes are user-facing. The release commit writes the notes
           # into the manifest; this job only refreshes version + date and
@@ -69,6 +71,10 @@ jobs:
             EXISTING_NOTES="Release $TAG_NAME"
           fi
           EXISTING_I18N="$(jq -c '.releaseNotesI18n // empty' "$MANIFEST" 2>/dev/null || true)"
+          # Build into a temp file first; only swap it into place once jq has
+          # produced a complete document. Under `set -e` a jq failure aborts the
+          # job BEFORE the mv, so a partial/empty manifest can never be pushed
+          # (a plain `> "$MANIFEST"` would truncate it before jq even runs).
           if [ -n "$EXISTING_I18N" ]; then
             jq -n \
               --arg v "$VERSION" \
@@ -76,15 +82,16 @@ jobs:
               --arg n "$EXISTING_NOTES" \
               --argjson i "$EXISTING_I18N" \
               '{version: $v, releaseDate: $d, releaseNotes: $n, releaseNotesI18n: $i}' \
-              > "$MANIFEST"
+              > "$TMP"
           else
             jq -n \
               --arg v "$VERSION" \
               --arg d "$DATE" \
               --arg n "$EXISTING_NOTES" \
               '{version: $v, releaseDate: $d, releaseNotes: $n}' \
-              > "$MANIFEST"
+              > "$TMP"
           fi
+          mv "$TMP" "$MANIFEST"
 
       - name: Commit and push
         env:

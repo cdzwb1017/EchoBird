@@ -3,7 +3,7 @@
 // update. Content is the current release's notes read straight from the
 // version manifest (echobird.ai/api/version/index.json); only the section
 // matching the active UI locale is shown.
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -78,6 +78,9 @@ export const ChangelogDialog: React.FC<ChangelogDialogProps> = ({ isOpen, onClos
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // Whether we've ever loaded good notes. Once true, a later failed refetch
+  // keeps the last content on screen instead of flipping to the error state.
+  const loadedRef = useRef(false);
 
   // Fetch the manifest each time the dialog opens — it's a tiny JSON and we
   // want the freshest notes. The initial state is 'loading' (covers the first
@@ -94,8 +97,11 @@ export const ChangelogDialog: React.FC<ChangelogDialogProps> = ({ isOpen, onClos
         if (cancelled) return;
         setManifest(data);
         setStatus('ready');
+        loadedRef.current = true;
       } catch {
-        if (!cancelled) setStatus('error');
+        // Keep the last-good notes visible on a silent refetch failure; only
+        // show the error screen when there's nothing loaded yet.
+        if (!cancelled && !loadedRef.current) setStatus('error');
       }
     })();
     return () => {

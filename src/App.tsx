@@ -127,9 +127,11 @@ function App() {
       if (appVersion) {
         try {
           const seen = localStorage.getItem('echobird-changelog-seen');
-          // Auto-open only on a genuine version change (an update), not on the
-          // first-ever install — there we just record the baseline silently.
-          if (seen && seen !== appVersion) {
+          // Auto-open only on a genuine UPGRADE (not first install, not a
+          // downgrade). isNewerVersion(appVersion, seen) is true only when the
+          // installed version moved forward. The baseline still tracks any
+          // change so a later re-upgrade pops again.
+          if (seen && isNewerVersion(appVersion, seen)) {
             setShowChangelog(true);
           }
           if (seen !== appVersion) {
