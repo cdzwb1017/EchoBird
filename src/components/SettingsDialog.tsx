@@ -16,8 +16,9 @@ const LOCALE_OPTIONS = [
   { id: 'ja', label: '日本語' },
 ];
 
-// localStorage flag gating the opt-in apply effect + sound. MUST match the key
-// AppManagerProvider reads. Default off, so it never bothers work-focused users.
+// localStorage flag gating the apply effect + sound. MUST match the key
+// AppManagerProvider reads. Default ON — users can switch it off here to keep
+// things quiet.
 const EASTER_EGG_KEY = 'echobird_easter_egg';
 
 interface SettingsDialogProps {
@@ -60,7 +61,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   // Load settings on mount
   useEffect(() => {
     if (isOpen) {
-      setEasterEgg(localStorage.getItem(EASTER_EGG_KEY) === 'true');
+      setEasterEgg(localStorage.getItem(EASTER_EGG_KEY) !== 'false');
       api.getSettings().then((settings) => {
         setCloseToTray(settings.closeToTray ?? false);
       });

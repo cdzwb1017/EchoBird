@@ -436,7 +436,7 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
       // Only Xiaomi's MiMo models get the apply pulse + sound; every other model
       // (and restore-to-official) applies silently.
       const appliedModel = userModels.find((m) => m.internalId === pending);
-      if (readBool('echobird_easter_egg', false) && isMimoModel(appliedModel)) firePulse(pending);
+      if (readBool('echobird_easter_egg', true) && isMimoModel(appliedModel)) firePulse(pending);
     }
     // Launch tool when "launch directly" is checked, or unconditionally for desktop apps
     if (launchAfterApply || noModelConfig) {
@@ -474,7 +474,7 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
                 : t
             )
           );
-          if (readBool('echobird_easter_egg', false) && isMimoModel(selectedModel))
+          if (readBool('echobird_easter_egg', true) && isMimoModel(selectedModel))
             firePulse(selectedModel.internalId);
         }
       } else {
