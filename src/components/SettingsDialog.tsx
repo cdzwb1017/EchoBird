@@ -46,7 +46,15 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   >(null);
   const [installPct, setInstallPct] = useState(0);
   const [closeToTray, setCloseToTray] = useState<boolean | null>(false);
-  const [easterEgg, setEasterEgg] = useState(false);
+  // Read the persisted flag once at mount (default ON). The toggle keeps state
+  // and localStorage in sync, so there's no need to re-read it via an effect.
+  const [easterEgg, setEasterEgg] = useState(() => {
+    try {
+      return localStorage.getItem(EASTER_EGG_KEY) !== 'false';
+    } catch {
+      return true;
+    }
+  });
   const themeMode = useThemeStore((s) => s.mode);
   const setThemeMode = useThemeStore((s) => s.setMode);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -58,10 +66,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       .catch(() => setAppVersion(''));
   }, []);
 
-  // Load settings on mount
+  // Load backend settings each time the dialog opens.
   useEffect(() => {
     if (isOpen) {
-      setEasterEgg(localStorage.getItem(EASTER_EGG_KEY) !== 'false');
       api.getSettings().then((settings) => {
         setCloseToTray(settings.closeToTray ?? false);
       });

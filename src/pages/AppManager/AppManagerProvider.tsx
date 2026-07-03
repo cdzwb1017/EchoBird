@@ -122,10 +122,14 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
   // A pulse belongs to the tool it was applied to. `appliedPulse`/`userModels`
   // are global and the card gate matches only on model id, so switching tools
   // would otherwise replay the pulse on a different tool's card that happens to
-  // list the same model — clear it whenever the selected tool changes.
-  useEffect(() => {
+  // list the same model — clear it whenever the selected tool changes. Adjust
+  // state during render (React's "reset on prop change" pattern) rather than in
+  // an effect, so it applies before paint without a setState-in-effect cascade.
+  const [pulseTool, setPulseTool] = useState<string | null>(selectedTool);
+  if (pulseTool !== selectedTool) {
+    setPulseTool(selectedTool);
     setAppliedPulse(null);
-  }, [selectedTool]);
+  }
 
   // Bottom-bar checkbox states are persisted across sessions — users get tired of
   // re-checking the same boxes every launch. Default both to true so picking an app
