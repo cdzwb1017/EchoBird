@@ -456,17 +456,22 @@ export function EffortPulse({
       }
       if (!startMs) startMs = nowMs;
       const elapsed = (nowMs - startMs) / 1000;
-      // Reduced motion: freeze the fire (no flicker / travel) by pinning its
-      // time; a one-shot still animates only the envelope, so cover→reveal is an
-      // opacity change rather than motion.
-      const ft = reduce ? startMs + 2500 : nowMs;
-      const fe = reduce ? 2.5 : elapsed;
       if (oneShot) {
-        frame(ft, fe, oneShotEnvelope(elapsed));
+        // The one-shot MiMo easter egg always animates the fire. We deliberately
+        // do NOT consult prefers-reduced-motion here (mirroring AiCareer's
+        // heatmap): pinning the fire's time under reduce-motion renders a frozen
+        // frame that reads as broken — the "stuck on one frame" bug on machines
+        // with Windows animation effects off — while the opacity envelope +
+        // sound still play. The explicit `echobird_easter_egg` settings toggle is
+        // the opt-out; don't auto-freeze on the OS motion signal.
+        frame(nowMs, elapsed, oneShotEnvelope(elapsed));
         if (elapsed < OS_VISIBLE + 0.05) raf = window.requestAnimationFrame(loop);
       } else if (reduce) {
+        // Looping demo under reduced motion: settle a static frame, then stop.
+        const ft = startMs + 2500;
+        const fe = 2.5;
         frame(ft, fe, 1);
-        if (elapsed < 1.5) raf = window.requestAnimationFrame(loop); // settle a static frame, then stop
+        if (elapsed < 1.5) raf = window.requestAnimationFrame(loop);
       } else {
         frame(nowMs, elapsed, loopEnvelope(elapsed % LOOP_CYCLE));
         raf = window.requestAnimationFrame(loop);
