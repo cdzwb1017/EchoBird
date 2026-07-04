@@ -79,6 +79,10 @@ static BUNDLED: BundledAssets = BundledAssets {
             include_str!("../../docs/api/tools/install/coffeecli.json"),
         ),
         (
+            "claudescience",
+            include_str!("../../docs/api/tools/install/claudescience.json"),
+        ),
+        (
             "vscode",
             include_str!("../../docs/api/tools/install/vscode.json"),
         ),

@@ -1,0 +1,33 @@
+{
+    "name": "Claude Science",
+    "names": {
+        "zh-Hans": "Claude 科学",
+        "zh-Hant": "Claude 科學"
+    },
+    "category": "Utility",
+    "noModelConfig": true,
+    "apiProtocol": [
+        "anthropic"
+    ],
+    "docs": "https://claude.com/product/claude-science",
+    "website": "https://claude.com/product/claude-science",
+    "command": "",
+    "startCommand": "claude-science serve",
+    "configDir": "~/.claude-science",
+    "configFile": "~/.claude-science/preferences.json",
+    "requireConfigFile": false,
+    "paths": {
+        "win32": [],
+        "darwin": [
+            "/Applications/Claude Science.app/Contents/MacOS/Claude Science"
+        ],
+        "linux": [
+            "~/.local/bin/claude-science",
+            "/usr/local/bin/claude-science",
+            "/usr/bin/claude-science"
+        ]
+    },
+    "installHints": {
+        "macosAppName": "Claude Science"
+    }
+}
