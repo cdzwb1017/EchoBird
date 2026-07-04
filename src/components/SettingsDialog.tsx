@@ -70,7 +70,17 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       api.getSettings().then((settings) => {
-        setCloseToTray(settings.closeToTray ?? false);
+        // null ("always ask") is a real selectable value, not a missing
+        // field — the backend stores it as Option<bool>=None. When the user
+        // explicitly chose it (closeWindowBehaviorSet === true), preserve
+        // null so the dialog reflects their choice instead of resetting to
+        // "quit directly" (false). Only fall back to false for the genuinely
+        // unset case (never configured), matching the original default.
+        setCloseToTray(
+          settings.closeWindowBehaviorSet && settings.closeToTray === null
+            ? null
+            : (settings.closeToTray ?? false)
+        );
       });
     }
   }, [isOpen]);
