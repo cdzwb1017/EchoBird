@@ -37,6 +37,7 @@ Tools that are installed as separate executables:
 - **opencode**: Open Code
 - **pi**: Pi assistant
 - **vibe-trading**: AI quant-research / market-analysis agent (Quant Analysis category)
+- **claudescience**: Claude Science (noModelConfig showcase, macOS/Linux only — no Windows build)
 
 ### 2. Desktop Apps
 

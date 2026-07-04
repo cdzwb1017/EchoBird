@@ -539,15 +539,16 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
             firePulse(selectedModel.internalId);
         }
       } else {
-        // CLI tools (not launchable, not noModelConfig) get a working-folder
-        // picker before launch — Coffee-CLI-style launchpad, minus the
-        // persistence (we re-prompt every launch). Desktop apps (noModelConfig)
-        // skip the picker; their cwd is irrelevant. If the user cancels the
-        // picker, abort the launch entirely — don't fall back to home, which is
-        // the bug this fixes (CLI tools used to spawn in ~/ and were useless
-        // for development).
+        // Only "CLI Code" tools prompt for a working folder — their launch goes
+        // through start_cli_tool, which honors cwd. Desktop / IDE / Utility /
+        // Game tools launch via start_gui_tool / launch_vscode / launchGame,
+        // none of which consume cwd, so prompting would silently discard the
+        // user's pick (Coffee-CLI-style launchpad, minus persistence — we
+        // re-prompt every launch). If the user cancels the picker, abort the
+        // launch entirely — don't fall back to home, which is the bug this
+        // fixes (CLI tools used to spawn in ~/ and were useless for development).
         let cwd: string | undefined;
-        if (!noModelConfig) {
+        if (toolData?.category === 'CLI Code') {
           try {
             const picked = await openDialog({ directory: true, multiple: false });
             if (typeof picked !== 'string' || !picked) {
