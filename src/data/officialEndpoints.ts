@@ -71,17 +71,14 @@ export const OFFICIAL_ENDPOINTS: Record<string, OfficialEndpoint> = {
     protocol: 'openai',
     modelId: 'mimo-v2.5-pro',
   },
-  kimicode: {
-    // Restore removes our echobird provider block; Kimi Code then falls
-    // back to /login (Kimi Code OAuth or a Moonshot platform API key).
-    // OpenAI-only — the anthropic provider type's base_url is appended to by
-    // the Anthropic SDK (/v1/messages), which 404s against third-party
-    // Anthropic-compatible relays, so we don't expose Anthropic for kimi.
-    name: 'Moonshot Kimi Official',
-    baseUrl: 'https://api.moonshot.ai/v1',
-    protocol: 'openai',
-    modelId: 'kimi-k2.7-code',
-  },
+  // Kimi Code: NO official-endpoint card. Unlike Xiaomi's single MiMo
+  // platform, Moonshot runs TWO separate platforms with independent
+  // accounts/keys — api.moonshot.ai (global, platform.kimi.ai) and
+  // api.moonshot.cn (China, platform.kimi.com) — so picking one as "the
+  // official" would misrepresent it as canonical (the .ai entry I first
+  // added was wrong for China users). Both are already listed in the model
+  // directory as distinct entries; users pick their platform there.
+  // Restore-to-official is hidden for kimi, matching openclaw/hermes/opencode.
   // OpenCode is a third-party tool, not OpenAI official
   // Community open-source tools (openclaw, hermes, opencode) have no
   // canonical vendor URL — restore is hidden.
