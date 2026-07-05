@@ -74,9 +74,11 @@ export const OFFICIAL_ENDPOINTS: Record<string, OfficialEndpoint> = {
   kimicode: {
     // Restore removes our echobird provider block; Kimi Code then falls
     // back to /login (Kimi Code OAuth or a Moonshot platform API key).
+    // OpenAI-only — the anthropic provider type's base_url is appended to by
+    // the Anthropic SDK (/v1/messages), which 404s against third-party
+    // Anthropic-compatible relays, so we don't expose Anthropic for kimi.
     name: 'Moonshot Kimi Official',
     baseUrl: 'https://api.moonshot.ai/v1',
-    anthropicUrl: 'https://api.moonshot.ai/anthropic',
     protocol: 'openai',
     modelId: 'kimi-k2.7-code',
   },

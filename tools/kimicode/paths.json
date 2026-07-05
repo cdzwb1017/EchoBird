@@ -2,8 +2,7 @@
     "name": "Kimi Code",
     "category": "CLI Code",
     "apiProtocol": [
-        "openai",
-        "anthropic"
+        "openai"
     ],
     "docs": "https://moonshotai.github.io/kimi-code/",
     "command": "kimi",
