@@ -4,11 +4,11 @@ Copyright (c) 2026 edison7009 and EchoBird contributors
 This product includes software developed by the EchoBird project
 (https://github.com/edison7009/EchoBird).
 
-Licensed under the Business Source License 1.1 (BUSL-1.1) for v5.0.0 and
-later, and the GNU Affero General Public License, Version 3.0 or later
-(AGPL-3.0-or-later) for v4.x and earlier. See the LICENSE file for the
-current license text. Each v5.x version auto-converts to GPL-2.0-or-later
-four years after its publication date.
+Licensed under the MIT License for v5.0.0 and later. The GNU Affero
+General Public License, Version 3.0 or later (AGPL-3.0-or-later) continues
+to govern v4.x and earlier in perpetuity — already-released v4.x binaries
+and their corresponding source remain under AGPL-3.0-or-later and are not
+retroactively relicensed. See the LICENSE file for the current (MIT) text.
 
 ================================================================================
 ORIGINAL DESIGNS AND CONCEPTS
@@ -16,7 +16,7 @@ ORIGINAL DESIGNS AND CONCEPTS
 
 The following designs, features, and UI/UX patterns were originated by the
 EchoBird project. The source code that implements them is governed by the
-AGPL-3.0 license; the *underlying ideas, interface arrangements, and
+MIT license; the *underlying ideas, interface arrangements, and
 combinations* are documented here for two reasons:
   (a) so honest downstream forks and reimplementations can credit prior
       art appropriately, and
@@ -301,6 +301,6 @@ list of major upstream projects:
   - Rust crates listed in Cargo.toml — see each crate's own license
   - npm packages listed in package.json — see each package's own license
 
-Each component remains under its own license. The AGPL-3.0 license that
-governs EchoBird as a whole does not override the terms of these bundled
-or linked components.
+Each component remains under its own license. The MIT license that governs
+EchoBird as a whole does not override the terms of these bundled or linked
+components.

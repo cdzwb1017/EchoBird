@@ -3,7 +3,7 @@ name = "echobird"
 version = "5.4.4"
 description = "The Nexus for Models, Agents & Vibe Coding"
 authors = ["Echobird Team"]
-license = "BUSL-1.1"
+license = "MIT"
 repository = "https://echobird.ai/"
 edition = "2021"
 rust-version = "1.77.2"
@@ -16,12 +16,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Closed-source core (private repository, fetched by Cargo at build time).
-# Requires read access to github.com/edison7009/EchoBird-secret-.
-# On Windows, set CARGO_NET_GIT_FETCH_WITH_CLI=true so Cargo uses git's
-# credential helper (gh auth login provides the token); CI uses the
-# ECHOBIRD_SECRET_DEPLOY_KEY Actions secret via webfactory/ssh-agent.
-echobird_core = { git = "https://github.com/edison7009/EchoBird-secret-.git", branch = "main" }
+# Core library — now open-source, lives in this repo at ../echobird_core.
+echobird_core = { path = "../echobird_core" }
 
 # Only the public thin shell (src/lib.rs) directly uses `tauri` — for
 # `tauri::generate_context!()`, which has to expand against this crate's

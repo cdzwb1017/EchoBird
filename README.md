@@ -13,7 +13,7 @@
   </a>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/built%20with-Tauri%20%2B%20Rust-orange?style=flat-square" alt="Tauri + Rust" />
-  <img src="https://img.shields.io/github/license/edison7009/EchoBird?style=flat-square" alt="BUSL-1.1 License" />
+  <img src="https://img.shields.io/github/license/edison7009/EchoBird?style=flat-square" alt="MIT License" />
 </p>
 
 <p align="center">
@@ -151,14 +151,11 @@ Latest release → <https://github.com/edison7009/EchoBird/releases/latest>
 ## License & Trademarks
 
 **Code** — EchoBird **v5.0.0 and later** are licensed under the
-[Business Source License 1.1 (BUSL-1.1)](LICENSE). Source is published for
-transparency, audit, personal use, and honest forks. Production
-redistribution as a multi-LLM client product, hosted-service operation,
-or substantially overlapping derivative product requires a commercial
-license — see the Additional Use Grant in [LICENSE](LICENSE) for the
-precise scope. Each v5.x version auto-converts to GPL-2.0-or-later four
-years after its publication date. EchoBird **v4.x and earlier** remain
-under AGPL-3.0-or-later in perpetuity. See [NOTICE](NOTICE) for attribution.
+[MIT License](LICENSE). The full source — including the Rust core
+(`echobird_core`) — is open: fork it, study it, ship it. EchoBird
+**v4.x and earlier** remain under AGPL-3.0-or-later in perpetuity
+(already-released v4.x binaries are not retroactively relicensed).
+See [NOTICE](NOTICE) for attribution.
 
 **Trade dress + brand** — EchoBird's primary protection is its **UI / UX trade
 dress**: the specific combination of four user-facing surfaces sharing one

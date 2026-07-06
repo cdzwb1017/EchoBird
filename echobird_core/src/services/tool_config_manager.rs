@@ -1,0 +1,4282 @@
+// Tool config manager �?handles model configuration for all tools
+// Ports the old Electron model.ts/model.cjs logic into Rust
+// Each custom tool has its own apply/read function
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::services::tool_manager;
+
+/// Model info to apply to a tool
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anthropic_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_model: Option<String>,
+    /// When true, write the provider's REAL base_url + api_key into
+    /// ~/.codex/config.toml + ~/.codex/auth.json so Codex talks to the
+    /// upstream directly, bypassing our local proxy. Used for relay
+    /// stations (cc-vibe.com etc.) that already serve the Responses
+    /// protocol natively — protocol-translation isn't needed.
+    /// Only consumed by `apply_codex`; other tools ignore it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relay_mode: Option<bool>,
+    /// Codex-only. When true, keep config.toml pointed at the 127.0.0.1
+    /// proxy (so model-id rewrite still happens) but have the proxy forward
+    /// to the upstream's native `/responses` endpoint verbatim instead of
+    /// translating down to Chat Completions. For third-party models that
+    /// natively speak the Responses protocol. Mutually exclusive with
+    /// `relay_mode`. Only consumed by `apply_codex`; other tools ignore it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub responses_passthrough: Option<bool>,
+    /// Codex-only. `Some(false)` → write `web_search = "disabled"` into
+    /// config.toml so Codex won't offer its built-in web-search tool; otherwise
+    /// left at Codex's default (`cached`). Lets the user kill web search even on
+    /// vendors whose adapter supports it (MiMo/GLM/Qwen) to save tokens.
+    /// Consumed by `apply_codex`; other tools ignore it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub web_search: Option<bool>,
+    /// Claude Code relay-only. When `Some(true)` AND `relay_mode` is on,
+    /// append `[1m]` to the 1M-capable env vars (`ANTHROPIC_MODEL` /
+    /// `ANTHROPIC_DEFAULT_SONNET_MODEL` / `ANTHROPIC_DEFAULT_OPUS_MODEL`)
+    /// written to ~/.claude/settings.json so Claude Code budgets the 1M
+    /// context window. Claude Code strips the suffix before sending the id
+    /// upstream, so the provider still sees the bare id. `HAIKU` and
+    /// `CLAUDE_CODE_SUBAGENT_MODEL` never get the suffix — no 1M concept.
+    /// No effect in bridge mode (bridge writes no model id — CC uses its
+    /// built-in claude-* ids, which already budget the full window).
+    /// Only consumed by `apply_claudecode`; other tools ignore it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub one_m_context: Option<bool>,
+}
+
+/// Result of applying a model config
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ApplyResult {
+    pub success: bool,
+    pub message: String,
+}
+
+// ─── Helpers ───
+
+fn echobird_dir() -> PathBuf {
+    dirs::home_dir().unwrap_or_default().join(".echobird")
+}
+
+fn ensure_parent(path: &Path) {
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            let _ = fs::create_dir_all(parent);
+        }
+    }
+}
+
+/// Canonical Codex config identity. Every apply_codex run produces a
+/// config.toml with the same provider name and display model regardless
+/// of which third-party endpoint is actually behind the proxy — keeps
+/// the config file clean and avoids stale orphan sections accumulating
+/// across model switches. The launcher proxy translates the display
+/// model to the real provider's model ID when forwarding requests.
+const CODEX_PROVIDER: &str = "OpenAI";
+const CODEX_DISPLAY_MODEL: &str = "gpt-5.5";
+
+// Stable proxy port. Sourced from codex_proxy (the listener owner) so
+// the constant has exactly one definition. Bound permanently so
+// ~/.codex/config.toml can hold a fixed `base_url = "http://127.0.0.1:
+// <PORT>/v1"` — model switches happen by rewriting only
+// ~/.echobird/codex.json, which the proxy reads fresh on every request.
+use crate::services::codex_proxy::CODEX_PROXY_PORT;
+
+/// Extract domain name from URL for use in identifiers
+/// Example: "https://api.openai.com/v1" -> "api_openai_com"
+fn extract_domain_name(url: &str) -> String {
+    url.trim_start_matches("http://")
+        .trim_start_matches("https://")
+        .split('/')
+        .next()
+        .unwrap_or(url)
+        .split(':')
+        .next()
+        .unwrap_or(url)
+        .replace('.', "_")
+}
+
+/// Read JSON file, return Value or None
+fn read_json_file(path: &Path) -> Option<serde_json::Value> {
+    let content = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
+fn read_jsonc_file(path: &Path) -> Option<serde_json::Value> {
+    let content = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&strip_jsonc_comments(&content)).ok()
+}
+
+fn strip_jsonc_comments(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while let Some(c) = chars.next() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_string = false;
+            }
+            out.push(c);
+            continue;
+        }
+
+        if c == '"' {
+            in_string = true;
+            out.push(c);
+            continue;
+        }
+
+        if c == '/' {
+            match chars.peek().copied() {
+                Some('/') => {
+                    chars.next();
+                    for next in chars.by_ref() {
+                        if next == '\n' {
+                            out.push('\n');
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                Some('*') => {
+                    chars.next();
+                    let mut prev = '\0';
+                    for next in chars.by_ref() {
+                        if prev == '*' && next == '/' {
+                            break;
+                        }
+                        prev = next;
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+        }
+
+        out.push(c);
+    }
+
+    out
+}
+
+/// Write JSON value to file with pretty formatting
+fn write_json_file(path: &Path, value: &serde_json::Value) -> Result<(), String> {
+    ensure_parent(path);
+    let content = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
+    fs::write(path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
+}
+
+// ─── Known ModelInfo fields ───
+
+const KNOWN_MODEL_FIELDS: &[&str] = &["id", "name", "baseUrl", "apiKey", "model", "protocol"];
+
+fn get_model_field(model_info: &ModelInfo, field_name: &str) -> Option<String> {
+    match field_name {
+        "model" => model_info.model.clone(),
+        "name" => model_info.name.clone(),
+        "baseUrl" | "base_url" => model_info.base_url.clone(),
+        "apiKey" | "api_key" => model_info.api_key.clone(),
+        "protocol" => model_info.protocol.clone(),
+        "anthropicUrl" | "anthropic_url" => model_info.anthropic_url.clone(),
+        _ => None,
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  APPLY MODEL �?main entry point
+// ════════════════════════════════════════════════════════════════
+
+pub async fn apply_model_to_tool(tool_id: &str, model_info: ModelInfo) -> ApplyResult {
+    log::info!("[ToolConfigManager] Applying model to {}", tool_id);
+    let model_info = normalize_model_info_for_tool(tool_id, model_info);
+
+    // Dispatch custom tools to their own handlers
+    match tool_id {
+        // OpenClaw: direct write to ~/.openclaw/openclaw.json (no patch needed since v2026.3.13)
+        "openclaw" => return apply_openclaw(&model_info),
+
+        // Type 3: Direct JSON overwrite (special format).
+        // CLI and Desktop share ~/.config/opencode/opencode.jsonc — one apply
+        // covers both (Desktop spawns `opencode serve` reading the same file).
+        "opencode" | "opencodedesktop" => return apply_opencode(&model_info),
+
+        // MiMo Code (Xiaomi fork of OpenCode): same provider schema,
+        // own config at ~/.config/mimocode/mimocode.json(c).
+        "mimocode" => return apply_mimocode(&model_info),
+
+        // ZCode (Z.AI desktop OpenCode fork): OpenCode schema but the provider
+        // uses a `kind` discriminator and supports BOTH protocols; config at
+        // ~/.zcode/v2/config.json.
+        "zcode" => return apply_zcode(&model_info),
+
+        // Codex CLI and Codex Desktop share ~/.codex/config.toml.
+        "codex" | "codexdesktop" => return apply_codex(tool_id, &model_info),
+
+        // Claude Desktop 3P profile (Anthropic-native providers only)
+        "claudedesktop" => return apply_claudedesktop(&model_info),
+
+        // Claude Code — same model-id-rewrite proxy path as Claude Desktop,
+        // but writes ~/.claude/settings.json env vars + its own relay file.
+        "claudecode" => return apply_claudecode(&model_info),
+
+        // Type 4: YAML
+        "aider" => return apply_aider(&model_info),
+
+        // Grok Build CLI (xAI) — sectioned TOML with [model.echobird] + [models]
+        "grok" => return apply_grok(&model_info),
+
+        // Qwen Code: direct write to ~/.qwen/settings.json
+        "qwencode" => return apply_qwen_code(&model_info),
+
+        // Pi (earendil-works/pi): writes ~/.pi/agent/{models,settings}.json
+        "pi" => return apply_pi(&model_info),
+
+        // Kimi Code (Moonshot AI): TOML at ~/.kimi-code/config.toml
+        "kimicode" => return apply_kimicode(&model_info),
+
+        // Vibe-Trading (HKUDS): dotenv at ~/.vibe-trading/.env. Every endpoint
+        // we point it at is OpenAI-compatible, so pin LANGCHAIN_PROVIDER=openai.
+        "vibe-trading" => return apply_vibe_trading(&model_info),
+
+        // WorkBuddy (Tencent CodeBuddy 办公版): ~/.workbuddy/models.json.
+        "workbuddy" => return apply_workbuddy(&model_info),
+
+        // Plug-and-play: check config.json custom flag
+        _ => {
+            if let Some((def, _)) = tool_manager::get_tool_config_mapping(tool_id) {
+                if def.config_mapping.custom {
+                    return apply_echobird_relay(tool_id, &model_info, false);
+                }
+            }
+        }
+    }
+
+    apply_generic_json(tool_id, &model_info).await
+}
+
+fn normalize_model_info_for_tool(tool_id: &str, mut model_info: ModelInfo) -> ModelInfo {
+    if tool_id == "claudecode" && model_info.protocol.as_deref() == Some("anthropic") {
+        if let Some(ref mut base_url) = model_info.base_url {
+            let trimmed = base_url.trim_end_matches('/').to_string();
+            if let Some(without_v1) = trimmed.strip_suffix("/v1") {
+                *base_url = without_v1.to_string();
+            } else {
+                *base_url = trimmed;
+            }
+        }
+    }
+    model_info
+}
+
+// ════════════════════════════════════════════════════════════════
+//  RESTORE TO OFFICIAL — delete config so tool regenerates defaults
+// ════════════════════════════════════════════════════════════════
+
+/// Delete the tool's config file (and any Echobird relay side-channel) so
+/// the tool itself regenerates a fresh, vendor-default config on next launch.
+/// Used by the App Manager "restore to official" flow.
+pub async fn restore_tool_to_official(tool_id: &str) -> ApplyResult {
+    let config_path = match tool_manager::get_tool_config_mapping(tool_id) {
+        Some((_, path)) => path,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: format!("Unknown tool: {}", tool_id),
+            }
+        }
+    };
+
+    if matches!(tool_id, "codex" | "codexdesktop") {
+        return restore_codex_to_official(tool_id, &config_path);
+    }
+    if tool_id == "claudedesktop" {
+        return restore_claudedesktop_to_official();
+    }
+    if tool_id == "claudecode" {
+        return restore_claudecode_to_official();
+    }
+    if tool_id == "grok" {
+        return restore_grok_to_official();
+    }
+    if matches!(tool_id, "opencode" | "opencodedesktop") {
+        return restore_opencode_to_official();
+    }
+    if tool_id == "mimocode" {
+        return restore_mimocode_to_official();
+    }
+    if tool_id == "zcode" {
+        return restore_zcode_to_official();
+    }
+    if tool_id == "pi" {
+        return restore_pi_to_official();
+    }
+    if tool_id == "kimicode" {
+        return restore_kimicode_to_official();
+    }
+
+    // Side-channel relay file (openclaw and other "custom" tools) —
+    // best-effort cleanup, ignored if absent.
+    let relay_path = echobird_dir().join(format!("{}.json", tool_id));
+    if relay_path.exists() {
+        let _ = fs::remove_file(&relay_path);
+    }
+
+    if !config_path.exists() {
+        return ApplyResult {
+            success: true,
+            message: format!(
+                "{} already at defaults — no config file to remove.",
+                tool_id
+            ),
+        };
+    }
+
+    match fs::remove_file(&config_path) {
+        Ok(_) => {
+            log::info!(
+                "[ToolConfigManager] Restored {} — deleted {:?}",
+                tool_id,
+                config_path
+            );
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "{} restored — config deleted, tool will regenerate defaults on next launch.",
+                    tool_id
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: format!("Failed to delete {} config: {}", tool_id, e),
+        },
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GET MODEL INFO �?main entry point
+// ════════════════════════════════════════════════════════════════
+
+pub async fn get_tool_model_info(tool_id: &str) -> Option<ModelInfo> {
+    match tool_id {
+        "openclaw" => return read_openclaw(),
+        "opencode" | "opencodedesktop" => return read_opencode(),
+        "mimocode" => return read_mimocode(),
+        "zcode" => return read_zcode(),
+        "codex" | "codexdesktop" => return read_codex(),
+        "claudedesktop" => return read_claudedesktop(),
+        "claudecode" => return read_claudecode(),
+        "aider" => return read_aider(),
+        "grok" => return read_grok(),
+        "qwencode" => return read_qwen_code(),
+        "pi" => return read_pi(),
+        "kimicode" => return read_kimicode(),
+        "vibe-trading" => return read_vibe_trading(),
+        "workbuddy" => return read_workbuddy(),
+        // Plug-and-play: check config.json custom flag
+        _ => {
+            if let Some((def, _)) = tool_manager::get_tool_config_mapping(tool_id) {
+                if def.config_mapping.custom {
+                    return read_echobird_relay(tool_id);
+                }
+            }
+        }
+    }
+
+    read_generic_json(tool_id)
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Type 1: Generic JSON mapping (ClaudeCode, etc.)
+// ════════════════════════════════════════════════════════════════
+
+async fn apply_generic_json(tool_id: &str, model_info: &ModelInfo) -> ApplyResult {
+    let (def, config_path) = match tool_manager::get_tool_config_mapping(tool_id) {
+        Some(pair) => pair,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: format!("Unknown tool: {}", tool_id),
+            };
+        }
+    };
+
+    let cm = &def.config_mapping;
+
+    if cm.format != "json" {
+        return ApplyResult {
+            success: false,
+            message: format!(
+                "Config format '{}' not supported for generic apply",
+                cm.format
+            ),
+        };
+    }
+
+    let write_map = match &cm.write {
+        Some(w) => w.clone(),
+        None => {
+            return ApplyResult {
+                success: false,
+                message: format!("Tool '{}' has no write mapping defined", tool_id),
+            };
+        }
+    };
+
+    let mut config = read_json_file(&config_path).unwrap_or(serde_json::json!({}));
+
+    for (config_json_path, model_field) in &write_map {
+        let value = get_model_field(model_info, model_field);
+        if let Some(val) = value {
+            tool_manager::set_nested_value(
+                &mut config,
+                config_json_path,
+                serde_json::Value::String(val),
+            );
+        } else if model_field.is_empty() {
+            tool_manager::set_nested_value(
+                &mut config,
+                config_json_path,
+                serde_json::Value::String(String::new()),
+            );
+        } else if !KNOWN_MODEL_FIELDS.contains(&model_field.as_str()) {
+            tool_manager::set_nested_value(
+                &mut config,
+                config_json_path,
+                serde_json::Value::String(model_field.clone()),
+            );
+        }
+    }
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => {
+            log::info!("[ToolConfigManager] Config written to {:?}", config_path);
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "Model \"{}\" applied to {} successfully.",
+                    model_info.model.as_deref().unwrap_or(""),
+                    tool_id
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+fn read_generic_json(tool_id: &str) -> Option<ModelInfo> {
+    let (def, config_path) = tool_manager::get_tool_config_mapping(tool_id)?;
+    let cm = &def.config_mapping;
+    if cm.format != "json" {
+        return None;
+    }
+    let read_map = cm.read.as_ref()?;
+    let config = read_json_file(&config_path)?;
+
+    let read_field = |paths: &Option<Vec<String>>| -> Option<String> {
+        for p in paths.as_ref()? {
+            if let Some(val) = tool_manager::get_nested_value(&config, p) {
+                if let Some(s) = val.as_str() {
+                    if !s.is_empty() {
+                        return Some(s.to_string());
+                    }
+                }
+            }
+        }
+        None
+    };
+
+    let model = read_field(&read_map.model);
+    model.as_ref()?;
+
+    Some(ModelInfo {
+        name: None,
+        model,
+        base_url: read_field(&read_map.base_url),
+        api_key: read_field(&read_map.api_key),
+        anthropic_url: None,
+        protocol: None,
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Type 2: Echobird relay JSON (OpenClaw + custom plug-and-play tools)
+//  Write to ~/.echobird/{tool_id}.json
+// ════════════════════════════════════════════════════════════════
+
+fn apply_echobird_relay(
+    tool_id: &str,
+    model_info: &ModelInfo,
+    include_provider: bool,
+) -> ApplyResult {
+    let config_path = echobird_dir().join(format!("{}.json", tool_id));
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty, cannot apply config".to_string(),
+        };
+    }
+
+    let mut config = serde_json::json!({
+        "apiKey": model_info.api_key.as_deref().unwrap_or(""),
+        "modelId": model_id,
+        "modelName": model_info.name.as_deref().unwrap_or(model_id),
+    });
+
+    if let Some(ref base_url) = model_info.base_url {
+        config["baseUrl"] = serde_json::Value::String(base_url.clone());
+    }
+    if include_provider {
+        config["provider"] = serde_json::Value::String("openai".to_string());
+    }
+    if tool_id == "openclaw" {
+        config["protocol"] = serde_json::Value::String(
+            model_info
+                .protocol
+                .as_deref()
+                .unwrap_or("openai")
+                .to_string(),
+        );
+    }
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => {
+            log::info!(
+                "[ToolConfigManager] {} config written to {:?}",
+                tool_id,
+                config_path
+            );
+            crate::services::tool_patcher::patch_tool(tool_id);
+            let tool_display = match tool_id {
+                "openclaw" => "OpenClaw",
+                _ => tool_id,
+            };
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "Model \"{}\" configured for {}. Restart to apply.",
+                    model_info.name.as_deref().unwrap_or(model_id),
+                    tool_display
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+fn read_echobird_relay(tool_id: &str) -> Option<ModelInfo> {
+    let config_path = echobird_dir().join(format!("{}.json", tool_id));
+    let config = read_json_file(&config_path)?;
+    let model_id = config.get("modelId")?.as_str()?.to_string();
+    if model_id.is_empty() {
+        return None;
+    }
+
+    Some(ModelInfo {
+        name: config
+            .get("modelName")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        model: Some(model_id),
+        base_url: config
+            .get("baseUrl")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        api_key: config
+            .get("apiKey")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        anthropic_url: None,
+        protocol: config
+            .get("protocol")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// ════════════════════════════════════════════════════════════════
+//  OpenClaw: Direct write to ~/.openclaw/openclaw.json
+//  v2026.3.13+: models.providers custom provider, mode: "merge"
+//  No longer patches openclaw.mjs — writes native config directly.
+// ════════════════════════════════════════════════════════════════
+
+fn apply_openclaw(model_info: &ModelInfo) -> ApplyResult {
+    let home = dirs::home_dir().unwrap_or_default();
+    let oc_dir = home.join(".openclaw");
+    let oc_config_path = oc_dir.join("openclaw.json");
+
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty, cannot apply config".to_string(),
+        };
+    }
+
+    let api_key = model_info.api_key.as_deref().unwrap_or("");
+    if api_key.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "API Key is empty, cannot apply config".to_string(),
+        };
+    }
+
+    // Preserve gateway token from existing config (if any)
+    let gateway = if oc_config_path.exists() {
+        read_json_file(&oc_config_path).and_then(|c| c.get("gateway").cloned())
+    } else {
+        None
+    };
+
+    // Determine protocol and API type
+    let protocol = model_info.protocol.as_deref().unwrap_or("openai");
+    let is_anthropic = protocol == "anthropic"
+        || model_id.to_lowercase().contains("claude")
+        || model_info
+            .base_url
+            .as_deref()
+            .unwrap_or("")
+            .to_lowercase()
+            .contains("anthropic");
+    let api_type = if is_anthropic {
+        "anthropic-messages"
+    } else {
+        "openai-completions"
+    };
+
+    // Extract provider tag from base URL
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/');
+    let provider_tag = extract_domain_name(base_url);
+    let eb_provider = format!("eb_{}", provider_tag);
+
+    // Build fresh openclaw.json — full overwrite, no merge
+    let mut oc_config = serde_json::json!({
+        "models": {
+            "mode": "merge",
+            "providers": {
+                eb_provider.clone(): {
+                    "baseUrl": base_url,
+                    "apiKey": api_key,
+                    "api": api_type,
+                    "models": [{
+                        "id": model_id,
+                        "name": model_info.name.as_deref().unwrap_or(model_id),
+                        "contextWindow": 128000,
+                        "maxTokens": 8192,
+                        "input": ["text"],
+                        "reasoning": false,
+                        "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+                    }]
+                }
+            }
+        },
+        "agents": {
+            "defaults": {
+                "model": {
+                    "primary": format!("{}/{}", eb_provider, model_id)
+                }
+            }
+        }
+    });
+
+    // Restore gateway token
+    if let Some(gw) = gateway {
+        oc_config["gateway"] = gw;
+    }
+
+    // Write fresh config
+    ensure_parent(&oc_config_path);
+    if let Err(e) = write_json_file(&oc_config_path, &oc_config) {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to write openclaw.json: {}", e),
+        };
+    }
+
+    // Also write ~/.echobird/openclaw.json relay (used by Bridge/Channels)
+    let relay_path = echobird_dir().join("openclaw.json");
+    let relay = serde_json::json!({
+        "apiKey": api_key,
+        "modelId": model_id,
+        "modelName": model_info.name.as_deref().unwrap_or(model_id),
+        "baseUrl": base_url,
+        "protocol": protocol,
+    });
+    let _ = write_json_file(&relay_path, &relay);
+
+    log::info!(
+        "[ToolConfigManager] OpenClaw config overwritten: {}/{} ({})",
+        eb_provider,
+        model_id,
+        api_type
+    );
+
+    ApplyResult {
+        success: true,
+        message: format!(
+            "Model \"{}\" configured for OpenClaw ({}/{}).",
+            model_info.name.as_deref().unwrap_or(model_id),
+            eb_provider,
+            model_id
+        ),
+    }
+}
+
+fn read_openclaw() -> Option<ModelInfo> {
+    let oc_config_path = dirs::home_dir()?.join(".openclaw").join("openclaw.json");
+    let config = read_json_file(&oc_config_path)?;
+
+    // Read primary model: agents.defaults.model.primary = "eb_xxx/model-id"
+    let primary = config
+        .pointer("/agents/defaults/model/primary")
+        .and_then(|v| v.as_str())?;
+
+    // Parse "provider/model" format
+    let (provider_name, model_id) = primary.split_once('/')?;
+
+    // Only read eb_ providers (our custom ones)
+    if !provider_name.starts_with("eb_") {
+        return None;
+    }
+
+    // Get provider details from models.providers
+    let provider = config.pointer(&format!("/models/providers/{}", provider_name))?;
+
+    let base_url = provider
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let api_key = provider
+        .get("apiKey")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let api_type = provider
+        .get("api")
+        .and_then(|v| v.as_str())
+        .unwrap_or("openai-completions");
+    let protocol = if api_type.contains("anthropic") {
+        "anthropic"
+    } else {
+        "openai"
+    };
+
+    // Get model name from models array
+    let model_name = provider
+        .get("models")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| {
+            arr.iter()
+                .find(|m| m.get("id").and_then(|v| v.as_str()) == Some(model_id))
+        })
+        .and_then(|m| m.get("name").and_then(|v| v.as_str()))
+        .map(|s| s.to_string());
+
+    Some(ModelInfo {
+        name: model_name,
+        model: Some(model_id.to_string()),
+        base_url,
+        api_key,
+        anthropic_url: None,
+        protocol: Some(protocol.to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Type 3b: OpenCode
+//  ~/.config/opencode/opencode.json  {provider: {X: {npm, options, models}}}
+// ════════════════════════════════════════════════════════════════
+
+fn apply_opencode(model_info: &ModelInfo) -> ApplyResult {
+    // Write echobird relay JSON — the patched launcher reads this
+    let config_path = echobird_dir().join("opencode.json");
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty, cannot apply config".to_string(),
+        };
+    }
+
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+    let provider_name = model_id; // Use model ID instead of domain name
+
+    let config = serde_json::json!({
+        "apiKey": model_info.api_key.as_deref().unwrap_or(""),
+        "baseUrl": base_url,
+        "modelId": model_id,
+        "modelName": model_info.name.as_deref().unwrap_or(model_id),
+        "providerName": provider_name,
+    });
+
+    if let Err(e) = write_opencode_native_config(model_info, model_id, &base_url, provider_name) {
+        return ApplyResult {
+            success: false,
+            message: e,
+        };
+    }
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => {
+            log::info!(
+                "[ToolConfigManager] OpenCode config written to {:?}",
+                config_path
+            );
+            crate::services::tool_patcher::patch_opencode();
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "Model \"{}\" configured for OpenCode. Use /models in TUI to select echobird/{}.",
+                    model_info.name.as_deref().unwrap_or(model_id), model_id
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+fn write_opencode_native_config(
+    model_info: &ModelInfo,
+    model_id: &str,
+    base_url: &str,
+    provider_name: &str,
+) -> Result<(), String> {
+    let config_path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".config")
+        .join("opencode")
+        .join("opencode.jsonc");
+
+    let mut config = read_jsonc_file(&config_path)
+        .or_else(|| read_json_file(&config_path.with_extension("json")))
+        .unwrap_or(serde_json::json!({}));
+
+    if config.get("$schema").is_none() {
+        config["$schema"] = serde_json::json!("https://opencode.ai/config.json");
+    }
+    if !config
+        .get("provider")
+        .map(|v| v.is_object())
+        .unwrap_or(false)
+    {
+        config["provider"] = serde_json::json!({});
+    }
+
+    let provider_id = "echobird";
+    config["provider"][provider_id] = serde_json::json!({
+        "npm": "@ai-sdk/openai-compatible",
+        "name": provider_name,
+        "options": {
+            "baseURL": base_url,
+            "apiKey": model_info.api_key.as_deref().unwrap_or("")
+        },
+        "models": {
+            model_id: {
+                "name": model_info.name.as_deref().unwrap_or(model_id)
+            }
+        }
+    });
+    config["model"] = serde_json::Value::String(format!("{}/{}", provider_id, model_id));
+    config["small_model"] = serde_json::Value::String(format!("{}/{}", provider_id, model_id));
+
+    write_json_file(&config_path, &config)
+}
+
+fn read_opencode() -> Option<ModelInfo> {
+    let native_path = dirs::home_dir()?
+        .join(".config")
+        .join("opencode")
+        .join("opencode.jsonc");
+    if let Some(info) = read_opencode_native_config(&native_path)
+        .or_else(|| read_opencode_native_config(&native_path.with_extension("json")))
+    {
+        return Some(info);
+    }
+
+    // Read from echobird relay JSON
+    let config_path = echobird_dir().join("opencode.json");
+    let config = read_json_file(&config_path)?;
+    let model_id = config.get("modelId")?.as_str()?.to_string();
+    if model_id.is_empty() {
+        return None;
+    }
+
+    Some(ModelInfo {
+        name: config
+            .get("modelName")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        model: Some(model_id),
+        base_url: config
+            .get("baseUrl")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        api_key: config
+            .get("apiKey")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        anthropic_url: None,
+        protocol: None,
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+fn read_opencode_native_config(path: &Path) -> Option<ModelInfo> {
+    let config = if path.extension().and_then(|e| e.to_str()) == Some("jsonc") {
+        read_jsonc_file(path)?
+    } else {
+        read_json_file(path)?
+    };
+    let selected = config.get("model")?.as_str()?;
+    let (provider_id, model_id) = selected.split_once('/')?;
+    let provider = config.pointer(&format!("/provider/{}", provider_id))?;
+
+    Some(ModelInfo {
+        name: provider
+            .pointer(&format!("/models/{}/name", model_id))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        model: Some(model_id.to_string()),
+        base_url: provider
+            .pointer("/options/baseURL")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        api_key: provider
+            .pointer("/options/apiKey")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        anthropic_url: None,
+        protocol: Some("openai".to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+fn restore_opencode_to_official() -> ApplyResult {
+    let relay_path = echobird_dir().join("opencode.json");
+    if relay_path.exists() {
+        let _ = fs::remove_file(&relay_path);
+    }
+
+    let native_path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".config")
+        .join("opencode")
+        .join("opencode.jsonc");
+
+    if !native_path.exists() {
+        return ApplyResult {
+            success: true,
+            message: "OpenCode already at defaults - no config file to update.".to_string(),
+        };
+    }
+
+    let mut updated_any = false;
+    for path in [&native_path, &native_path.with_extension("json")] {
+        if !path.exists() {
+            continue;
+        }
+
+        let mut config = match read_jsonc_file(path) {
+            Some(c) => c,
+            None => {
+                return ApplyResult {
+                    success: false,
+                    message: format!("Failed to parse OpenCode config: {}", path.display()),
+                }
+            }
+        };
+
+        if let Some(provider) = config.get_mut("provider").and_then(|v| v.as_object_mut()) {
+            provider.remove("echobird");
+        }
+        if config
+            .get("model")
+            .and_then(|v| v.as_str())
+            .map(|s| s.starts_with("echobird/"))
+            .unwrap_or(false)
+        {
+            tool_manager::delete_nested_value(&mut config, "model");
+        }
+        if config
+            .get("small_model")
+            .and_then(|v| v.as_str())
+            .map(|s| s.starts_with("echobird/"))
+            .unwrap_or(false)
+        {
+            tool_manager::delete_nested_value(&mut config, "small_model");
+        }
+
+        if let Err(e) = write_json_file(path, &config) {
+            return ApplyResult {
+                success: false,
+                message: e,
+            };
+        }
+        updated_any = true;
+    }
+
+    if updated_any {
+        ApplyResult {
+            success: true,
+            message: "OpenCode restored - Echobird provider removed.".to_string(),
+        }
+    } else {
+        ApplyResult {
+            success: true,
+            message: "OpenCode already at defaults - no config file to update.".to_string(),
+        }
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Type 3c: MiMo Code — Xiaomi's fork of OpenCode (binary: `mimo`)
+//  ~/.config/mimocode/mimocode.json(c)  {provider: {X: {npm, options, models}}}
+//  Same provider schema as OpenCode; no launcher patch and no relay
+//  file — the curl install is a standalone binary, so the native
+//  config write is the whole mechanism.
+// ════════════════════════════════════════════════════════════════
+
+fn mimocode_config_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_default()
+        .join(".config")
+        .join("mimocode")
+}
+
+/// MiMo Code merges global configs in order config.json → mimocode.json →
+/// mimocode.jsonc (later wins). Target the highest-priority file that
+/// exists so our keys always take effect; default new installs to the
+/// documented canonical name, mimocode.json.
+fn mimocode_write_path() -> PathBuf {
+    let jsonc = mimocode_config_dir().join("mimocode.jsonc");
+    if jsonc.exists() {
+        jsonc
+    } else {
+        mimocode_config_dir().join("mimocode.json")
+    }
+}
+
+fn apply_mimocode(model_info: &ModelInfo) -> ApplyResult {
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty, cannot apply config".to_string(),
+        };
+    }
+
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+
+    let config_path = mimocode_write_path();
+    let mut config = read_jsonc_file(&config_path).unwrap_or(serde_json::json!({}));
+
+    if config.get("$schema").is_none() {
+        config["$schema"] = serde_json::json!("https://mimo.xiaomi.com/config.json");
+    }
+    if !config
+        .get("provider")
+        .map(|v| v.is_object())
+        .unwrap_or(false)
+    {
+        config["provider"] = serde_json::json!({});
+    }
+
+    let provider_id = "echobird";
+    config["provider"][provider_id] = serde_json::json!({
+        "npm": "@ai-sdk/openai-compatible",
+        "name": model_id,
+        "options": {
+            "baseURL": base_url,
+            "apiKey": model_info.api_key.as_deref().unwrap_or("")
+        },
+        "models": {
+            model_id: {
+                "name": model_info.name.as_deref().unwrap_or(model_id)
+            }
+        }
+    });
+    config["model"] = serde_json::Value::String(format!("{}/{}", provider_id, model_id));
+    config["small_model"] = serde_json::Value::String(format!("{}/{}", provider_id, model_id));
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => {
+            log::info!(
+                "[ToolConfigManager] MiMo Code config written to {:?}",
+                config_path
+            );
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "Model \"{}\" configured for MiMo Code. Restart `mimo` or use /models to select {}/{}.",
+                    model_info.name.as_deref().unwrap_or(model_id),
+                    provider_id,
+                    model_id
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+fn read_mimocode() -> Option<ModelInfo> {
+    // Same provider schema as OpenCode — reuse its native-config reader.
+    let dir = mimocode_config_dir();
+    read_opencode_native_config(&dir.join("mimocode.jsonc"))
+        .or_else(|| read_opencode_native_config(&dir.join("mimocode.json")))
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ZCode — Z.AI's desktop OpenCode fork. ~/.zcode/v2/config.json.
+//  OpenCode config schema, but the provider uses a `kind` discriminator
+//  ("openai-compatible" | "anthropic") instead of OpenCode's `npm`, and
+//  it supports BOTH protocols. The native config write is the whole
+//  mechanism — desktop app, no launcher patch, no ~/.echobird relay.
+//  Default model is the OpenCode-standard top-level `model` selector.
+// ════════════════════════════════════════════════════════════════
+
+fn zcode_config_path() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_default()
+        .join(".zcode")
+        .join("v2")
+        .join("config.json")
+}
+
+fn apply_zcode(model_info: &ModelInfo) -> ApplyResult {
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty, cannot apply config".to_string(),
+        };
+    }
+
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+
+    // Local llama-server needs no real key; mirror the dummy used elsewhere.
+    let is_local = base_url.contains("127.0.0.1") || base_url.contains("localhost");
+    let api_key = match model_info.api_key.as_deref() {
+        Some(k) if !k.is_empty() => k.to_string(),
+        _ if is_local => "local-no-auth".to_string(),
+        _ => {
+            return ApplyResult {
+                success: false,
+                message: "API Key is empty, cannot apply config".to_string(),
+            }
+        }
+    };
+
+    // Protocol → provider `kind`. The frontend already collapsed the chosen
+    // protocol's URL into base_url, so base_url is correct for either kind.
+    let kind = if model_info.protocol.as_deref() == Some("anthropic") {
+        "anthropic"
+    } else {
+        "openai-compatible"
+    };
+
+    let config_path = zcode_config_path();
+    let mut config = read_jsonc_file(&config_path).unwrap_or(serde_json::json!({}));
+
+    if config.get("$schema").is_none() {
+        config["$schema"] = serde_json::json!("https://opencode.ai/config.json");
+    }
+    if !config
+        .get("provider")
+        .map(|v| v.is_object())
+        .unwrap_or(false)
+    {
+        config["provider"] = serde_json::json!({});
+    }
+
+    let provider_id = "echobird";
+    let display_name = model_info.name.as_deref().unwrap_or(model_id);
+    config["provider"][provider_id] = serde_json::json!({
+        "name": display_name,
+        "kind": kind,
+        "options": {
+            "apiKey": api_key,
+            "baseURL": base_url,
+            "apiKeyRequired": true
+        },
+        "source": "custom",
+        "models": {
+            model_id: {
+                "name": display_name,
+                "modalities": { "input": ["text"], "output": ["text"] }
+            }
+        }
+    });
+    // OpenCode-standard active-model selectors (UI stores its pick elsewhere;
+    // these set the configured default that ZCode reads on launch).
+    config["model"] = serde_json::Value::String(format!("{}/{}", provider_id, model_id));
+    config["small_model"] = serde_json::Value::String(format!("{}/{}", provider_id, model_id));
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => {
+            log::info!(
+                "[ToolConfigManager] ZCode config written to {:?}",
+                config_path
+            );
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "Model \"{}\" configured for ZCode. Restart ZCode to apply.",
+                    display_name
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+fn read_zcode() -> Option<ModelInfo> {
+    let config = read_jsonc_file(&zcode_config_path())?;
+    let selected = config.get("model")?.as_str()?;
+    let (provider_id, model_id) = selected.split_once('/')?;
+    let provider = config.pointer(&format!("/provider/{}", provider_id))?;
+    let kind = provider
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("openai-compatible");
+    let protocol = if kind == "anthropic" {
+        "anthropic"
+    } else {
+        "openai"
+    };
+
+    Some(ModelInfo {
+        name: provider
+            .pointer(&format!("/models/{}/name", model_id))
+            .and_then(|v| v.as_str())
+            .map(String::from)
+            .or_else(|| Some(model_id.to_string())),
+        model: Some(model_id.to_string()),
+        base_url: provider
+            .pointer("/options/baseURL")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        api_key: provider
+            .pointer("/options/apiKey")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        anthropic_url: None,
+        protocol: Some(protocol.to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+fn restore_zcode_to_official() -> ApplyResult {
+    let path = zcode_config_path();
+    if !path.exists() {
+        return ApplyResult {
+            success: true,
+            message: "ZCode already at defaults — no config file to update.".to_string(),
+        };
+    }
+    let mut config = match read_jsonc_file(&path) {
+        Some(c) => c,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: format!("Failed to parse ZCode config: {}", path.display()),
+            }
+        }
+    };
+    if let Some(provider) = config.get_mut("provider").and_then(|v| v.as_object_mut()) {
+        provider.remove("echobird");
+    }
+    for key in ["model", "small_model"] {
+        if config
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(|s| s.starts_with("echobird/"))
+            .unwrap_or(false)
+        {
+            tool_manager::delete_nested_value(&mut config, key);
+        }
+    }
+    match write_json_file(&path, &config) {
+        Ok(_) => ApplyResult {
+            success: true,
+            message: "ZCode restored — Echobird provider removed.".to_string(),
+        },
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+/// Model id for the launcher's `--model echobird/<id>` injection. MiMo Code
+/// keeps no ~/.echobird relay file (the native config is the single source
+/// of truth), so the launcher reads the selection from here instead. Some
+/// only while the native config currently selects our provider — after a
+/// restore or a hand-edit to another provider, no flag is injected and
+/// MiMo Code's own config/model resolution applies.
+pub fn mimocode_echobird_model() -> Option<String> {
+    let dir = mimocode_config_dir();
+    let config = read_jsonc_file(&dir.join("mimocode.jsonc"))
+        .or_else(|| read_jsonc_file(&dir.join("mimocode.json")))?;
+    let selected = config.get("model")?.as_str()?;
+    selected.strip_prefix("echobird/").map(|s| s.to_string())
+}
+
+fn restore_mimocode_to_official() -> ApplyResult {
+    // Builds prior to the dedicated mimocode arm fell through to the
+    // relay side-channel; clean that file up so it can't linger.
+    let relay_path = echobird_dir().join("mimocode.json");
+    if relay_path.exists() {
+        let _ = fs::remove_file(&relay_path);
+    }
+
+    let dir = mimocode_config_dir();
+    let mut updated_any = false;
+
+    for path in [dir.join("mimocode.jsonc"), dir.join("mimocode.json")] {
+        if !path.exists() {
+            continue;
+        }
+
+        let mut config = match read_jsonc_file(&path) {
+            Some(c) => c,
+            None => {
+                return ApplyResult {
+                    success: false,
+                    message: format!("Failed to parse MiMo Code config: {}", path.display()),
+                }
+            }
+        };
+
+        if let Some(provider) = config.get_mut("provider").and_then(|v| v.as_object_mut()) {
+            provider.remove("echobird");
+        }
+        if config
+            .get("model")
+            .and_then(|v| v.as_str())
+            .map(|s| s.starts_with("echobird/"))
+            .unwrap_or(false)
+        {
+            tool_manager::delete_nested_value(&mut config, "model");
+        }
+        if config
+            .get("small_model")
+            .and_then(|v| v.as_str())
+            .map(|s| s.starts_with("echobird/"))
+            .unwrap_or(false)
+        {
+            tool_manager::delete_nested_value(&mut config, "small_model");
+        }
+
+        if let Err(e) = write_json_file(&path, &config) {
+            return ApplyResult {
+                success: false,
+                message: e,
+            };
+        }
+        updated_any = true;
+    }
+
+    if updated_any {
+        ApplyResult {
+            success: true,
+            message: "MiMo Code restored - Echobird provider removed.".to_string(),
+        }
+    } else {
+        ApplyResult {
+            success: true,
+            message: "MiMo Code already at defaults - no config file to update.".to_string(),
+        }
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Type 4a: Aider �?~/.aider.conf.yml (simple YAML key: value)
+// ════════════════════════════════════════════════════════════════
+
+// Codex CLI and Codex Desktop share ~/.codex/config.toml.
+
+/// Apply our 11 canonical Codex fields surgically — overwrite if
+/// present, insert if missing — and return the rewritten content.
+/// Preserves everything else in the file (`[projects.*]` trust grants,
+/// `[tui.*]` NUX progress, `[plugins.*]` state, comments, hand-edited
+/// top-level keys).
+///
+/// This is the bottom-out for cases where a sibling model-switcher
+/// (cc-switch, manual edits, a different tool) rewrote keys we own
+/// (`model_provider`, `model`, `wire_api`, `requires_openai_auth`, etc.)
+/// to point at a different provider. Without this, a v4.8.x `apply_codex`
+/// that only flipped `base_url` would leave the rest of the sibling
+/// tool's edits in place and Codex would behave wrong (wrong model id,
+/// wrong wire protocol, wrong reasoning effort).
+///
+/// Used by both:
+///   • `apply_codex` (this file) — every model switch
+///   • `codex_proxy::config_manager::ensure_canonical_config` — every
+///     Codex spawn (pre-launch self-heal)
+///
+/// `codex_base_url` is the URL Codex will see in config.toml. In Bridge
+/// mode this is `http://127.0.0.1:53682/v1`; in Relay mode it's the
+/// real upstream URL.
+pub(crate) fn write_codex_canonical_fields(content: &str, codex_base_url: &str) -> String {
+    // Preserve the input's trailing-newline convention. `toml_write_*`
+    // helpers go through `content.lines().collect().join("\n")` which
+    // strips trailing newlines; without re-adding it, a canonical-input
+    // round-trip would always show as a one-byte diff and trigger
+    // pointless rewrites (e.g. ensure_canonical_config flapping from
+    // "already-canonical" to "drifted" on every Codex spawn).
+    let trailing_nl = content.ends_with('\n');
+    let mut c = content.to_string();
+
+    // Top-level string keys.
+    c = toml_write_top(&c, "model_provider", CODEX_PROVIDER);
+    c = toml_write_top(&c, "model", CODEX_DISPLAY_MODEL);
+    c = toml_write_top(&c, "review_model", CODEX_DISPLAY_MODEL);
+    c = toml_write_top(&c, "model_reasoning_effort", "high");
+    // Top-level raw (bool, int).
+    c = toml_write_top_raw(&c, "disable_response_storage", "true");
+    c = toml_write_top_raw(&c, "model_context_window", "1000000");
+    c = toml_write_top_raw(&c, "model_auto_compact_token_limit", "900000");
+
+    // [model_providers.OpenAI] string keys.
+    let table = format!("model_providers.{}", CODEX_PROVIDER);
+    c = toml_write_table_value(&c, &table, "name", CODEX_PROVIDER);
+    c = toml_write_table_value(&c, &table, "base_url", codex_base_url);
+    c = toml_write_table_value(&c, &table, "wire_api", "responses");
+    // [model_providers.OpenAI] raw (bool).
+    c = toml_write_table_value_raw(&c, &table, "requires_openai_auth", "true");
+
+    if trailing_nl && !c.ends_with('\n') {
+        c.push('\n');
+    }
+    c
+}
+
+fn apply_codex(tool_id: &str, model_info: &ModelInfo) -> ApplyResult {
+    // Two write modes, picked by `model_info.relay_mode`:
+    //
+    // • Bridge (default): config.toml's base_url is permanently
+    //   "http://127.0.0.1:53682/v1" (CODEX_PROXY_PORT). The proxy
+    //   reads ~/.echobird/codex.json on every request and forwards
+    //   with Responses ↔ Chat translation as needed. Same shape
+    //   across model switches, so Codex's runtime state in config.toml
+    //   ([projects.*] trust, [tui.*] NUX) survives switches.
+    //
+    // • Relay (relay_mode = true): config.toml's base_url is the
+    //   provider's REAL upstream URL. Codex talks to it directly. Used
+    //   for relay stations (cc-vibe.com etc.) that already speak the
+    //   Responses protocol — no proxy hop, no translation. The local
+    //   proxy stays running but Codex doesn't touch it for this
+    //   provider.
+
+    let codex_dir = dirs::home_dir().unwrap_or_default().join(".codex");
+    let config_path = codex_dir.join("config.toml");
+    let auth_path = codex_dir.join("auth.json");
+
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty".to_string(),
+        };
+    }
+
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+
+    // Reject ONLY the codex_proxy's own port (53682). Applying that as the
+    // upstream would make the proxy forward every request back to itself —
+    // an infinite loop. Other 127.0.0.1 ports are legitimate upstreams
+    // (most importantly 127.0.0.1:11434, EchoBird's local-LLM proxy that
+    // sits in front of llama-server), so the broader "no localhost"
+    // blanket-ban previously here was too aggressive and made Codex +
+    // local-LLM combinations impossible.
+    if base_url.contains(":53682") {
+        return ApplyResult {
+            success: false,
+            message: "Cannot use EchoBird's own Codex proxy (127.0.0.1:53682) as the provider — that would create a forwarding loop. Pick a real provider, or use the local LLM endpoint (127.0.0.1:11434).".to_string(),
+        };
+    }
+
+    // For local-LLM endpoints (127.0.0.1 / localhost — but NOT our own
+    // codex_proxy port 53682, which we already rejected above), llama-server
+    // ignores the API key entirely. Codex CLI, on the other hand, refuses to
+    // start when OPENAI_API_KEY is empty. Substitute a non-empty dummy so
+    // users don't have to invent a fake key in the Model Center just to use
+    // their own local model.
+    let raw_api_key = model_info.api_key.as_deref().unwrap_or("");
+    let is_local_provider = base_url.contains("127.0.0.1") || base_url.contains("localhost");
+    let api_key = if raw_api_key.is_empty() {
+        if is_local_provider {
+            "local-no-auth"
+        } else {
+            return ApplyResult {
+                success: false,
+                message: "API Key is empty, cannot apply Codex config".to_string(),
+            };
+        }
+    } else {
+        raw_api_key
+    };
+
+    // Resolve the URL Codex itself will see in its config.toml.
+    // Bridge mode points at our proxy port; Relay mode points at the
+    // real upstream so Codex skips the proxy.
+    let relay_mode = model_info.relay_mode.unwrap_or(false);
+    // Responses passthrough is a sub-mode of Bridge (the proxy stays in the
+    // path). It's meaningless under relay mode (which bypasses the proxy
+    // entirely), so force it off there — defensive, even though the UI
+    // auto-flips so the two are never both on.
+    let responses_passthrough = !relay_mode && model_info.responses_passthrough.unwrap_or(false);
+    let proxy_base_url = format!("http://127.0.0.1:{}/v1", CODEX_PROXY_PORT);
+    let codex_base_url = if relay_mode {
+        base_url.clone()
+    } else {
+        proxy_base_url.clone()
+    };
+
+    ensure_parent(&config_path);
+
+    // Canonicalize ALL 11 fields we own, every time. Overwrite-in-place
+    // if present, insert if missing. This is the bottom-out for sibling
+    // model-switchers (cc-switch, manual edits, etc.) that may have
+    // rewritten our keys to point at a different provider — we restore
+    // canonical shape end-to-end, not just `base_url`. Codex's own
+    // runtime state (`[projects.*]` trust, `[tui.*]` NUX, `[plugins.*]`)
+    // and any unrelated user-edited top-level keys stay untouched.
+    let existing = fs::read_to_string(&config_path).unwrap_or_default();
+    let mut new_content = write_codex_canonical_fields(&existing, &codex_base_url);
+
+    // web_search: user toggle. `Some(false)` → "disabled" (Codex won't offer
+    // its built-in search tool); otherwise Codex's default "cached". Written
+    // here (not in write_codex_canonical_fields) so the pre-spawn self-heal
+    // leaves the user's choice untouched.
+    let web_search_value = if model_info.web_search == Some(false) {
+        "disabled"
+    } else {
+        "cached"
+    };
+    new_content = toml_write_top(&new_content, "web_search", web_search_value);
+
+    // Only write if content actually changed — avoids touching mtime
+    // for no-op applies and avoids unnecessary fs traffic.
+    if new_content != existing {
+        if let Err(e) = fs::write(&config_path, &new_content) {
+            return ApplyResult {
+                success: false,
+                message: format!("Codex config error: {}", e),
+            };
+        }
+    }
+
+    // Back up any existing auth.json (OAuth-token sign-ins, prior api-key
+    // configs, etc.) before overwriting so restore-to-official can put it
+    // back. We keep one snapshot per session — apply_codex called multiple
+    // times in a row preserves the FIRST snapshot, not the most recent
+    // (which would clobber the original OAuth state with our apikey state).
+    let auth_backup_path = echobird_dir().join("codex-auth.bak.json");
+    if auth_path.exists() && !auth_backup_path.exists() {
+        if let Ok(existing) = fs::read(&auth_path) {
+            ensure_parent(&auth_backup_path);
+            let _ = fs::write(&auth_backup_path, existing);
+        }
+    }
+
+    // Write the api-key auth.json that Codex v0.130+ expects.
+    let auth_payload = serde_json::json!({ "OPENAI_API_KEY": api_key });
+    ensure_parent(&auth_path);
+    if let Err(e) = fs::write(
+        &auth_path,
+        serde_json::to_string_pretty(&auth_payload).unwrap_or_default(),
+    ) {
+        return ApplyResult {
+            success: false,
+            message: format!("Codex auth.json error: {}", e),
+        };
+    }
+
+    // The live relay — in Bridge mode the proxy reads this on every
+    // request, so it must reflect the upstream we want forwarded to.
+    // In Relay mode the proxy is bypassed for Codex, but we still
+    // write the same file so `read_codex` (used by the model-picker
+    // UI to round-trip the current selection) and ensure_canonical_config
+    // (which reads `relayMode` to decide whether to self-heal config.toml)
+    // both see consistent state.
+    let relay_path = echobird_dir().join("codex.json");
+    let relay = serde_json::json!({
+        "apiKey": api_key,
+        "baseUrl": base_url,
+        "displayModel": CODEX_DISPLAY_MODEL,
+        "actualModel": model_id,
+        "modelName": model_info.name.as_deref().unwrap_or(model_id),
+        "providerId": CODEX_PROVIDER,
+        "relayMode": relay_mode,
+        "responsesPassthrough": responses_passthrough,
+    });
+    let _ = write_json_file(&relay_path, &relay);
+
+    let display = if tool_id == "codexdesktop" {
+        "Codex Desktop"
+    } else {
+        "Codex CLI"
+    };
+    ApplyResult {
+        success: true,
+        message: format!(
+            "Model \"{}\" configured for {}.",
+            model_info.name.as_deref().unwrap_or(model_id),
+            display
+        ),
+    }
+}
+
+fn read_codex() -> Option<ModelInfo> {
+    let codex_dir = dirs::home_dir()?.join(".codex");
+    let content = fs::read_to_string(codex_dir.join("config.toml")).ok()?;
+
+    let model_from_toml = toml_read_top(&content, "model");
+    if model_from_toml.is_empty() {
+        return None;
+    }
+
+    let provider_id = toml_read_top(&content, "model_provider");
+    let mut base_url = if provider_id.is_empty() {
+        None
+    } else {
+        let value = toml_read_table_value(
+            &content,
+            &format!("model_providers.{}", provider_id),
+            "base_url",
+        );
+        if value.is_empty() {
+            None
+        } else {
+            Some(value)
+        }
+    };
+
+    // If base_url is EchoBird's own codex_proxy (port 53682), read the real
+    // provider URL from the relay file for UI display. The launcher rewrites
+    // config.toml to point at 127.0.0.1:53682 while running, but the UI should
+    // show users the actual provider they configured (e.g., api.xiaomimimo.com).
+    // This does NOT affect Codex's runtime behavior — Codex always reads from
+    // config.toml, which the launcher controls. Matching ONLY :53682 (not all
+    // 127.0.0.1) means a legitimate local-LLM endpoint such as
+    // 127.0.0.1:11434 stays visible as-is — that IS the real provider.
+    if let Some(ref url) = base_url {
+        if url.contains(":53682") {
+            base_url = read_codex_relay_base_url();
+        }
+    }
+
+    // When we wrote the canonical OpenAI provider, config.toml's `model`
+    // is the display alias ("gpt-5.5"), not the real third-party model.
+    // The UI needs the real one to round-trip a meaningful selection back
+    // to the user — read it from the relay file. Fall back to the
+    // config.toml value for non-canonical setups (e.g., user manually
+    // edited their config to point at a different provider).
+    let model = if provider_id == CODEX_PROVIDER {
+        read_codex_relay_model().unwrap_or(model_from_toml)
+    } else {
+        model_from_toml
+    };
+
+    // API key now lives in ~/.codex/auth.json (preferred_auth_method=apikey).
+    // Fall back to the legacy env_key path for configs written before this change.
+    let api_key = read_codex_auth_key(&codex_dir).or_else(|| {
+        let env_key = if provider_id.is_empty() {
+            String::new()
+        } else {
+            toml_read_table_value(
+                &content,
+                &format!("model_providers.{}", provider_id),
+                "env_key",
+            )
+        };
+        if env_key.is_empty() {
+            None
+        } else {
+            std::env::var(&env_key).ok()
+        }
+    });
+
+    Some(ModelInfo {
+        name: Some(model.clone()),
+        model: Some(model),
+        base_url,
+        api_key,
+        anthropic_url: None,
+        protocol: Some("openai".to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+fn read_codex_relay_base_url() -> Option<String> {
+    let relay_path = echobird_dir().join("codex.json");
+    let content = fs::read_to_string(relay_path).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&content).ok()?;
+    v.get("baseUrl").and_then(|x| x.as_str()).map(String::from)
+}
+
+fn read_codex_relay_model() -> Option<String> {
+    let relay_path = echobird_dir().join("codex.json");
+    let content = fs::read_to_string(relay_path).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&content).ok()?;
+    v.get("actualModel")
+        .or_else(|| v.get("modelName"))
+        .and_then(|x| x.as_str())
+        .map(String::from)
+}
+
+fn read_codex_auth_key(codex_dir: &Path) -> Option<String> {
+    let content = fs::read_to_string(codex_dir.join("auth.json")).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&content).ok()?;
+    v.get("OPENAI_API_KEY")
+        .and_then(|x| x.as_str())
+        .map(String::from)
+}
+
+fn restore_codex_to_official(tool_id: &str, config_path: &Path) -> ApplyResult {
+    // Full-file overwrite. Codex Desktop's model picker shows the
+    // `model_provider` id VERBATIM, so the built-in lowercase id
+    // "openai" rendered as a lowercase "openai" chip — inconsistent with
+    // the third-party path, which uses a capitalized "OpenAI" provider.
+    // Point at a capitalized "OpenAI" provider so the chip casing
+    // matches everywhere.
+    //
+    // We deliberately do NOT set `base_url`. Codex's `to_api_provider`
+    // resolves an unset base_url from the AUTH MODE — chatgpt.com/
+    // backend-api/codex for a ChatGPT login, api.openai.com otherwise —
+    // which is exactly the built-in openai behavior that keeps
+    // ChatGPT-account users working. `requires_openai_auth = true`
+    // reproduces the built-in's login-screen / auth.json handling. (A
+    // table keyed lowercase "openai" would be silently dropped: Codex's
+    // merge does `entry(key).or_insert`, and the built-in already owns
+    // that key — only a new "OpenAI" key takes effect.)
+    //
+    // We also write no `model` line — pinning one (we used to pin
+    // "gpt-4o") breaks ChatGPT-account users because OpenAI rejects
+    // gpt-4o for that auth path. Without it Codex selects an
+    // auth-appropriate default (gpt-5-codex for ChatGPT, otherwise its
+    // built-in default). Codex regenerates everything else
+    // (projects/marketplaces/tui state) on next launch.
+    let content = "model_provider = \"OpenAI\"\n\
+                   \n\
+                   [model_providers.OpenAI]\n\
+                   name = \"OpenAI\"\n\
+                   wire_api = \"responses\"\n\
+                   requires_openai_auth = true\n";
+
+    ensure_parent(config_path);
+    match fs::write(config_path, content) {
+        Ok(_) => {
+            // Restore auth.json from our backup if we have one (OAuth
+            // tokens, prior api-key from before the third-party detour).
+            //
+            // We do NOT delete auth.json when no backup exists. The old
+            // behavior was "fall through to Codex's own login flow",
+            // but deleting auth.json out from under a running Codex
+            // process produces a worse failure mode: the in-memory
+            // React state and the on-disk auth become inconsistent,
+            // which surfaces as a "fake account"
+            // displayed in the Codex sidebar and silently partitions
+            // any chats the user created during the third-party
+            // session into an inaccessible namespace. Leaving the
+            // third-party apikey in place at worst causes a 401 on
+            // next Codex request, which Codex handles loudly via its
+            // own re-login UI — better than silent data loss. Users
+            // who actually want to log out should use Codex's own
+            // logout button.
+            let auth_path = config_path
+                .parent()
+                .unwrap_or(Path::new(""))
+                .join("auth.json");
+            let auth_backup_path = echobird_dir().join("codex-auth.bak.json");
+            if auth_backup_path.exists() {
+                if let Ok(bak) = fs::read(&auth_backup_path) {
+                    let _ = fs::write(&auth_path, bak);
+                    let _ = fs::remove_file(&auth_backup_path);
+                }
+            }
+
+            let relay_path = echobird_dir().join("codex.json");
+            if relay_path.exists() {
+                let _ = fs::remove_file(&relay_path);
+            }
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "{} restored to OpenAI official provider.",
+                    if tool_id == "codexdesktop" {
+                        "Codex Desktop"
+                    } else {
+                        "Codex CLI"
+                    }
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: format!("Failed to restore Codex config: {}", e),
+        },
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Claude Desktop — 3P provider profile writer.
+//
+// Claude Desktop has an officially-supported "third-party profile"
+// (3P) mechanism that's completely separate from Claude Code's
+// ~/.claude/settings.json. Setting `deploymentMode = "3p"` in
+// claude_desktop_config.json + writing a profile JSON to
+// Claude-3p/configLibrary/ tells Desktop to route /v1/messages
+// traffic to a custom inferenceGatewayBaseUrl instead of Anthropic.
+//
+// We only support providers that natively speak the Anthropic
+// Messages API (i.e. `model.anthropicUrl` is set in
+// modelDirectory.json — DeepSeek, GLM, Kimi, Qwen, MiniMax,
+// Xiaomi, WorldRouter, Anthropic itself). Non-Anthropic providers
+// would need a translation proxy, which we deliberately skip —
+// the AppManager UI filters out incompatible models via the
+// existing apiProtocol/anthropicUrl gate.
+// ════════════════════════════════════════════════════════════════
+
+const CLAUDE_DESKTOP_PROFILE_ID: &str = "7d8f4e2a-9c3b-4f1a-b0e5-1a2b3c4d5e6f";
+const CLAUDE_DESKTOP_PROFILE_NAME: &str = "EchoBird";
+
+struct ClaudeDesktopLayout {
+    cfg_official: PathBuf,
+    cfg_threep: PathBuf,
+    lib_dir: PathBuf,
+}
+
+#[cfg(any(target_os = "macos", windows))]
+fn resolve_claudedesktop_paths() -> Option<ClaudeDesktopLayout> {
+    let home = dirs::home_dir()?;
+
+    #[cfg(target_os = "macos")]
+    let (official_dir, threep_dir) = {
+        let app_support = home.join("Library").join("Application Support");
+        (app_support.join("Claude"), app_support.join("Claude-3p"))
+    };
+
+    #[cfg(windows)]
+    let (official_dir, threep_dir) = {
+        let local = std::env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| home.join("AppData").join("Local"));
+        (local.join("Claude"), local.join("Claude-3p"))
+    };
+
+    Some(ClaudeDesktopLayout {
+        cfg_official: official_dir.join("claude_desktop_config.json"),
+        cfg_threep: threep_dir.join("claude_desktop_config.json"),
+        lib_dir: threep_dir.join("configLibrary"),
+    })
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+fn resolve_claudedesktop_paths() -> Option<ClaudeDesktopLayout> {
+    None
+}
+
+/// Flip the `deploymentMode` key on one of Claude Desktop's top-level
+/// config files. Preserves every other key the user (or Desktop itself)
+/// has stashed there — `mcpServers`, telemetry opt-outs, window size, etc.
+fn set_claude_deployment_mode(path: &Path, mode: &str) -> Result<(), String> {
+    let mut cfg = read_json_file(path).unwrap_or_else(|| serde_json::json!({}));
+    if !cfg.is_object() {
+        cfg = serde_json::json!({});
+    }
+    if let Some(obj) = cfg.as_object_mut() {
+        obj.insert(
+            "deploymentMode".to_string(),
+            serde_json::Value::String(mode.to_string()),
+        );
+    }
+    write_json_file(path, &cfg)
+}
+
+fn apply_claudedesktop(model_info: &ModelInfo) -> ApplyResult {
+    let paths = match resolve_claudedesktop_paths() {
+        Some(p) => p,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: "Claude Desktop is only supported on macOS and Windows.".to_string(),
+            };
+        }
+    };
+
+    // The frontend's AppManagerProvider.applyModel collapses the chosen
+    // protocol's URL into `base_url` when sending to the backend (the
+    // long-standing claudecode convention — see line `const apiUrl =
+    // useAnthropicUrl ? model.anthropicUrl! : model.baseUrl`). For
+    // claudedesktop the picked model's Anthropic endpoint will arrive
+    // in `base_url` with `protocol == "anthropic"`. Accept either field
+    // so we work today and stay compatible if the frontend ever sends
+    // `anthropic_url` explicitly. The AppManager protocol filter is the
+    // real gate that ensures the URL is actually Anthropic-shaped.
+    let anthropic_url = model_info
+        .anthropic_url
+        .as_deref()
+        .or(model_info.base_url.as_deref())
+        .map(str::trim)
+        .filter(|u| !u.is_empty())
+        .map(|u| u.trim_end_matches('/').to_string());
+    let anthropic_url = match anthropic_url {
+        Some(u) => u,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: "Base URL is empty. Pick a model first.".to_string(),
+            };
+        }
+    };
+
+    // Mirror the local-provider fallback in `apply_codex` (line 1153):
+    // local LLM proxies (llama.cpp / vllm / sglang under our unified
+    // proxy) don't require an API key, so an empty user-supplied key
+    // is legitimate when the upstream is loopback. Substitute a
+    // non-empty sentinel so anthropic_proxy still has something to
+    // forward as Bearer / x-api-key (the local server ignores it).
+    let raw_api_key = model_info.api_key.as_deref().unwrap_or("");
+    let is_local_provider =
+        anthropic_url.contains("127.0.0.1") || anthropic_url.contains("localhost");
+    let api_key = if raw_api_key.is_empty() {
+        if is_local_provider {
+            "local-no-auth".to_string()
+        } else {
+            return ApplyResult {
+                success: false,
+                message: "API Key is empty, cannot apply Claude Desktop config.".to_string(),
+            };
+        }
+    } else {
+        raw_api_key.to_string()
+    };
+
+    let real_model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("");
+
+    if let Err(e) = set_claude_deployment_mode(&paths.cfg_official, "3p") {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to set Claude config to 3p mode: {}", e),
+        };
+    }
+    if let Err(e) = set_claude_deployment_mode(&paths.cfg_threep, "3p") {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to set Claude-3p config to 3p mode: {}", e),
+        };
+    }
+
+    let _ = fs::create_dir_all(&paths.lib_dir);
+
+    // Two routing modes, picked by `model_info.relay_mode`:
+    //
+    // • Bridge (default): Desktop's gateway hits our local Anthropic
+    //   proxy on `127.0.0.1:CODEX_PROXY_PORT/v1/messages`. The proxy
+    //   reads the real upstream URL, API key, and model id fresh from
+    //   ~/.echobird/claudedesktop.json on every request, rewrites the
+    //   Anthropic-only model id (Desktop hardcodes claude-sonnet-4-*
+    //   etc.) to whatever the EchoBird user actually picked, and
+    //   forwards. The `inferenceGatewayApiKey` is a non-empty sentinel
+    //   — Desktop refuses an empty value but the proxy ignores what
+    //   Desktop sends here, using the real key from the relay file.
+    //
+    // • Relay (relay_mode = true): Desktop's gateway hits the upstream
+    //   directly. We write the real URL + real API key into the
+    //   profile JSON; the proxy is bypassed for /v1/messages. Used
+    //   for relay stations (cc-vibe.com etc.) that natively serve
+    //   Anthropic Messages and do their own model-id mapping. Caveat:
+    //   model-id rewrite is lost, so the upstream sees whatever id
+    //   Desktop chose (claude-sonnet-4-*, …) — fine for stations that
+    //   accept those, broken for raw Chat-only providers.
+    let proxy_base = format!("http://127.0.0.1:{}", CODEX_PROXY_PORT);
+    let relay_mode = model_info.relay_mode.unwrap_or(false);
+    let (gateway_base_url, gateway_api_key) = if relay_mode {
+        (anthropic_url.clone(), api_key.clone())
+    } else {
+        (proxy_base.clone(), "echobird-local-proxy".to_string())
+    };
+
+    let profile_path = paths
+        .lib_dir
+        .join(format!("{}.json", CLAUDE_DESKTOP_PROFILE_ID));
+    // Profile body — Desktop's gateway reads these on launch. The profile's
+    // display name is NOT a field of this object; it belongs in _meta.json
+    // entries[].name (Desktop's profile picker reads it from there).
+    //
+    // `inferenceModels` populates Desktop's in-app model picker directly
+    // and, crucially, BYPASSES Desktop's `/v1/models` discovery probe.
+    // Without this field, Desktop 1.7.x falls back to GET /v1/models on
+    // our gateway (which we don't implement) and surfaces a
+    // "Gateway returned an error" banner on every fresh install. We
+    // write a single entry whose `name` is the id Desktop sends on
+    // `/v1/messages`. In bridge mode that's the canonical claude-* id
+    // (messages_handler rewrites it to the real upstream model); in relay
+    // mode Desktop hits the upstream directly with no rewrite, so `name`
+    // must instead carry the real upstream id (computed below). `labelOverride` is
+    // the upstream model id (`real_model_id`, source = model_info.model
+    // with fallback to model_info.name) — NOT the user's editable card
+    // display name, which can be anything ("deepseek你好" etc.) and
+    // would surface garbage in Desktop's picker. cc-switch surfaces the
+    // upstream id here too.
+    // Bridge mode rewrites the id downstream, so the canonical claude-opus-4-8
+    // is correct (and clears Desktop's Claude-name filter). Relay mode bypasses
+    // the proxy — Desktop talks to the upstream directly — so the real upstream
+    // id (e.g. "fable-5") must be sent as-is, or the station receives a model
+    // name it never advertised. Fall back to the canonical id when no real id
+    // is known, so we never emit an empty name.
+    let base_model_id = if relay_mode && !real_model_id.is_empty() {
+        real_model_id
+    } else {
+        "claude-opus-4-8"
+    };
+    // 1M context: Claude Desktop expresses the long-context variant via a
+    // `supports1m: true` flag on the model entry — NOT a `[1m]` name suffix
+    // (Desktop's profile schema rejects the suffix). This flag is exactly what
+    // Desktop's "Offer 1M-context variant" UI toggle sets; the name stays the
+    // plain id. On by default (there is no user toggle any more), but BRIDGE
+    // MODE ONLY: there the entry name is the canonical claude-* id and every
+    // request passes our proxy, which strips any `[1m]` the client attaches.
+    // In relay mode Desktop talks to the third-party upstream directly with
+    // the real model id — advertising a 1M variant there would let Desktop
+    // send `<real-id>[1m]` downstream with nothing in the path to strip it.
+    //
+    // We deliberately do NOT set `anthropicFamilyTier` / `isFamilyDefault`.
+    // They were added to try to make the 1M variant the default, which turned
+    // out to be an unfixable Desktop-side bug. Worse, hardcoding a tier
+    // mislabels the model in relay mode: there the name is the real upstream id
+    // (e.g. a Sonnet model), so tagging it "opus" makes Desktop's opus alias
+    // resolve to a Sonnet model. The tier alias is optional — Desktop keeps the
+    // model usable without it.
+    let mut model_entry = serde_json::Map::new();
+    model_entry.insert(
+        "name".to_string(),
+        serde_json::Value::String(base_model_id.to_string()),
+    );
+    model_entry.insert(
+        "labelOverride".to_string(),
+        serde_json::Value::String(real_model_id.to_string()),
+    );
+    if !relay_mode {
+        model_entry.insert("supports1m".to_string(), serde_json::Value::Bool(true));
+    }
+    let model_entry = serde_json::Value::Object(model_entry);
+    let profile = serde_json::json!({
+        "disableDeploymentModeChooser": true,
+        "inferenceGatewayApiKey": gateway_api_key,
+        "inferenceGatewayAuthScheme": "bearer",
+        "inferenceGatewayBaseUrl": gateway_base_url,
+        "inferenceModels": [model_entry],
+        "inferenceProvider": "gateway",
+    });
+    if let Err(e) = write_json_file(&profile_path, &profile) {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to write Claude Desktop profile: {}", e),
+        };
+    }
+
+    // Meta — Desktop reads `appliedId` to know which profile is active,
+    // and `entries[]` to populate the in-app profile picker. Without the
+    // entries array the picker won't render our profile as named.
+    let meta_path = paths.lib_dir.join("_meta.json");
+    let meta = serde_json::json!({
+        "appliedId": CLAUDE_DESKTOP_PROFILE_ID,
+        "entries": [
+            {
+                "id": CLAUDE_DESKTOP_PROFILE_ID,
+                "name": CLAUDE_DESKTOP_PROFILE_NAME,
+            }
+        ],
+    });
+    let _ = write_json_file(&meta_path, &meta);
+
+    // Relay — the real upstream config that anthropic_proxy reads on
+    // every /v1/messages request. Updates here take effect on the next
+    // request without restarting anything.
+    // Relay file always reflects the real upstream config (even in Relay
+    // mode where the proxy is bypassed for the network path), so `read_
+    // claudedesktop` can round-trip the active model back to the UI
+    // and so future debug tooling has a consistent source of truth.
+    let relay_path = echobird_dir().join("claudedesktop.json");
+    let relay = serde_json::json!({
+        "baseUrl": anthropic_url,
+        "apiKey": api_key,
+        "actualModel": real_model_id,
+        "modelName": model_info.name.as_deref().unwrap_or(real_model_id),
+        "relayMode": relay_mode,
+    });
+    if let Err(e) = write_json_file(&relay_path, &relay) {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to write Claude Desktop relay file: {}", e),
+        };
+    }
+
+    ApplyResult {
+        success: true,
+        message:
+            "Claude Desktop configured. Please fully quit and reopen Claude Desktop for the change to take effect."
+                .to_string(),
+    }
+}
+
+fn restore_claudedesktop_to_official() -> ApplyResult {
+    let paths = match resolve_claudedesktop_paths() {
+        Some(p) => p,
+        None => {
+            return ApplyResult {
+                success: true,
+                message: "Claude Desktop is not supported on this OS — nothing to restore."
+                    .to_string(),
+            };
+        }
+    };
+
+    let _ = set_claude_deployment_mode(&paths.cfg_official, "1p");
+    let _ = set_claude_deployment_mode(&paths.cfg_threep, "1p");
+
+    let profile_path = paths
+        .lib_dir
+        .join(format!("{}.json", CLAUDE_DESKTOP_PROFILE_ID));
+    if profile_path.exists() {
+        let _ = fs::remove_file(&profile_path);
+    }
+
+    let meta_path = paths.lib_dir.join("_meta.json");
+    if meta_path.exists() {
+        let _ = fs::remove_file(&meta_path);
+    }
+
+    // Drop the relay file so anthropic_proxy stops accepting requests
+    // for the previously-applied provider. (The proxy keeps running and
+    // returns 503 on a missing relay — graceful no-op for any stale
+    // request still in flight.)
+    let relay_path = echobird_dir().join("claudedesktop.json");
+    if relay_path.exists() {
+        let _ = fs::remove_file(&relay_path);
+    }
+
+    ApplyResult {
+        success: true,
+        message:
+            "Claude Desktop restored to official provider. Please fully quit and reopen Claude Desktop."
+                .to_string(),
+    }
+}
+
+fn read_claudedesktop() -> Option<ModelInfo> {
+    // Source of truth is the relay file, NOT Claude Desktop's profile
+    // JSON. The profile only holds the proxy URL (127.0.0.1:53682) and
+    // a sentinel key; the real upstream URL / key / model id live in
+    // ~/.echobird/claudedesktop.json so apply_claudedesktop can update
+    // them without touching Desktop's config and triggering a restart.
+    let relay_path = echobird_dir().join("claudedesktop.json");
+    let relay = read_json_file(&relay_path)?;
+
+    let anthropic_url = relay
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())?
+        .to_string();
+    let api_key = relay
+        .get("apiKey")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+
+    Some(ModelInfo {
+        name: None,
+        model: None,
+        base_url: None,
+        api_key,
+        anthropic_url: Some(anthropic_url),
+        protocol: Some("anthropic".to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// Model-tier env vars Claude Code consults. Bridge mode clears them so Claude
+// Code falls back to its built-in claude-* ids (the proxy rewrites them);
+// relay mode pins them all to the real upstream model. Hoisted to module
+// scope so the set is lockable by tests — the apply path writes to
+// ~/.claude/settings.json via dirs::home_dir(), which isn't injectable.
+//
+// `ANTHROPIC_SMALL_FAST_MODEL` is deliberately NOT here — Claude Code
+// deprecated it in favor of `ANTHROPIC_DEFAULT_HAIKU_MODEL` (still pinned).
+// `CLAUDE_CODE_SUBAGENT_MODEL` IS here so relay mode pins subagents to the
+// upstream model too (otherwise subagents fall back to claude-* ids and
+// bypass the third-party router, breaking the "全量" write-in).
+// https://code.claude.com/docs/en/model-config
+const CLAUDECODE_MODEL_VARS: [&str; 5] = [
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "CLAUDE_CODE_SUBAGENT_MODEL",
+];
+
+/// The 1M-capable subset of [`CLAUDECODE_MODEL_VARS`]: env vars that receive
+/// a `[1m]` suffix when the user opts into the 1M context window. `HAIKU` and
+/// `CLAUDE_CODE_SUBAGENT_MODEL` are deliberately excluded — Haiku has no 1M
+/// tier, and subagents pin to the bare upstream id.
+const CLAUDECODE_MODEL_VARS_1M: &[&str] = &[
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+];
+
+/// Value written to a `CLAUDECODE_MODEL_VARS` entry in relay mode. Appends
+/// `[1m]` only when the user opted in (`one_m`) AND `var` is in the 1M-capable
+/// tier; `ANTHROPIC_DEFAULT_HAIKU_MODEL` / `CLAUDE_CODE_SUBAGENT_MODEL` always
+/// return the bare id. Bridge mode never calls this — it removes the vars
+/// instead of writing them, so the `relay` flag is the caller's responsibility.
+fn claudecode_env_model_id(real_id: &str, var: &str, one_m: bool) -> String {
+    if one_m && CLAUDECODE_MODEL_VARS_1M.contains(&var) {
+        format!("{}[1m]", real_id)
+    } else {
+        real_id.to_string()
+    }
+}
+
+/// Claude Code 3P config. Mirrors `apply_claudedesktop` but targets Claude
+/// Code's env-var config (~/.claude/settings.json) instead of Desktop's
+/// profile JSON. Two routing modes, picked by `model_info.relay_mode`:
+///
+/// • Bridge (default): point ANTHROPIC_BASE_URL at our local Anthropic proxy
+///   (127.0.0.1:<port>/claudecode) and write NO model id, so Claude Code
+///   sends its built-in claude-* ids and the proxy rewrites every request to
+///   the real upstream model (read fresh from ~/.echobird/claudecode.json).
+///   This is the "first-class citizen" path — strict upstreams never see a
+///   claude-* name they'd reject, matching how Claude Desktop already works.
+///
+/// • Relay (relay_mode = true): write the real upstream URL + key + model id
+///   straight into settings.json so Claude Code talks to the upstream
+///   directly, bypassing the proxy. For relay stations that natively serve
+///   Anthropic Messages and map the ids themselves. (≈ the legacy full-write.)
+///
+/// The relay side-channel (~/.echobird/claudecode.json) is written in BOTH
+/// modes so `read_claudecode` can round-trip the active model back to the UI.
+fn apply_claudecode(model_info: &ModelInfo) -> ApplyResult {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: "Cannot resolve home directory.".to_string(),
+            }
+        }
+    };
+    let settings_path = home.join(".claude").join("settings.json");
+
+    // Frontend collapses the chosen protocol's URL into base_url (same
+    // convention as apply_claudedesktop). Accept either field.
+    let anthropic_url = model_info
+        .anthropic_url
+        .as_deref()
+        .or(model_info.base_url.as_deref())
+        .map(str::trim)
+        .filter(|u| !u.is_empty())
+        .map(|u| {
+            // Trim a trailing '/' and a trailing '/v1' so relay mode (where
+            // Claude Code's SDK appends '/v1/messages' to ANTHROPIC_BASE_URL)
+            // can't produce a doubled '/v1/v1/messages'. normalize already does
+            // this for base_url; do it here too so the anthropic_url branch is
+            // equally safe. Bridge mode is immune either way (the proxy
+            // recomposes the path), but this keeps both modes consistent.
+            let u = u.trim_end_matches('/');
+            u.strip_suffix("/v1").unwrap_or(u).trim_end_matches('/').to_string()
+        });
+    let anthropic_url = match anthropic_url {
+        Some(u) => u,
+        None => {
+            return ApplyResult {
+                success: false,
+                message: "Base URL is empty. Pick a model first.".to_string(),
+            }
+        }
+    };
+
+    // Local providers (loopback) legitimately have no key — substitute a
+    // sentinel so the relay always has something to forward as Bearer.
+    let raw_api_key = model_info.api_key.as_deref().unwrap_or("");
+    let is_local_provider =
+        anthropic_url.contains("127.0.0.1") || anthropic_url.contains("localhost");
+    let api_key = if raw_api_key.is_empty() {
+        if is_local_provider {
+            "local-no-auth".to_string()
+        } else {
+            return ApplyResult {
+                success: false,
+                message: "API Key is empty, cannot apply Claude Code config.".to_string(),
+            };
+        }
+    } else {
+        raw_api_key.to_string()
+    };
+
+    let real_model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("")
+        .to_string();
+
+    let relay_mode = model_info.relay_mode.unwrap_or(false);
+    let proxy_base = format!("http://127.0.0.1:{}/claudecode", CODEX_PROXY_PORT);
+
+    // ── settings.json env block (preserve every other key the user has) ──
+    // Only start from a fresh object when the file genuinely does NOT exist. If
+    // it exists but won't parse as a JSON object (hand-edited typo, half-written
+    // by another tool), ABORT — defaulting to {} here and writing back would
+    // wipe the user's allowedTools / permissions / hooks / MCP config.
+    let mut config = if settings_path.exists() {
+        match read_json_file(&settings_path) {
+            Some(v) if v.is_object() => v,
+            _ => {
+                return ApplyResult {
+                    success: false,
+                    message:
+                        "~/.claude/settings.json exists but isn't valid JSON. Fix or remove it, then apply again — EchoBird won't overwrite it to avoid losing your Claude Code settings."
+                            .to_string(),
+                };
+            }
+        }
+    } else {
+        serde_json::json!({})
+    };
+    {
+        let obj = config.as_object_mut().expect("config is an object");
+        if !obj.get("env").map(|v| v.is_object()).unwrap_or(false) {
+            obj.insert("env".to_string(), serde_json::json!({}));
+        }
+    }
+    let env = config
+        .get_mut("env")
+        .and_then(|v| v.as_object_mut())
+        .expect("env is an object");
+
+    // Shared knobs (match the long-standing generic claudecode mapping).
+    env.insert(
+        "API_TIMEOUT_MS".to_string(),
+        serde_json::Value::String("3000000".to_string()),
+    );
+    env.insert(
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+        serde_json::Value::String("1".to_string()),
+    );
+
+    // Both modes authenticate via ANTHROPIC_AUTH_TOKEN (Bearer), so always drop
+    // any ANTHROPIC_API_KEY (x-api-key) the user may have left in settings.json —
+    // a stale real key would otherwise conflict. We *remove* the key rather than
+    // write an empty string (the old generic mapping could only set "", not
+    // delete) so settings.json stays clean.
+    env.remove("ANTHROPIC_API_KEY");
+
+    if relay_mode {
+        env.insert(
+            "ANTHROPIC_BASE_URL".to_string(),
+            serde_json::Value::String(anthropic_url.clone()),
+        );
+        env.insert(
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            serde_json::Value::String(api_key.clone()),
+        );
+        let one_m = model_info.one_m_context.unwrap_or(false);
+        for var in CLAUDECODE_MODEL_VARS {
+            env.insert(
+                var.to_string(),
+                serde_json::Value::String(claudecode_env_model_id(&real_model_id, var, one_m)),
+            );
+        }
+    } else {
+        env.insert(
+            "ANTHROPIC_BASE_URL".to_string(),
+            serde_json::Value::String(proxy_base),
+        );
+        env.insert(
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            serde_json::Value::String("echobird-local-proxy".to_string()),
+        );
+        for var in CLAUDECODE_MODEL_VARS {
+            env.remove(var);
+        }
+    }
+
+    if let Err(e) = write_json_file(&settings_path, &config) {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to write Claude Code settings: {}", e),
+        };
+    }
+
+    // Relay side-channel — real upstream, read fresh by anthropic_proxy on
+    // every /claudecode/v1/messages request and by read_claudecode for the UI.
+    let relay_path = echobird_dir().join("claudecode.json");
+    let relay = serde_json::json!({
+        "baseUrl": anthropic_url,
+        "apiKey": api_key,
+        "actualModel": real_model_id,
+        "modelName": model_info.name.as_deref().unwrap_or(real_model_id.as_str()),
+        "relayMode": relay_mode,
+    });
+    if let Err(e) = write_json_file(&relay_path, &relay) {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to write Claude Code relay file: {}", e),
+        };
+    }
+
+    ApplyResult {
+        success: true,
+        message:
+            "Claude Code configured. Restart Claude Code (or /exit and reopen) for the change to take effect."
+                .to_string(),
+    }
+}
+
+fn read_claudecode() -> Option<ModelInfo> {
+    // Source of truth is the relay file (written in both modes), NOT
+    // settings.json — mirrors read_claudedesktop. Surfaces the real upstream
+    // model so the App Manager card shows it after a rescan.
+    let relay_path = echobird_dir().join("claudecode.json");
+    let relay = read_json_file(&relay_path)?;
+
+    let anthropic_url = relay
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())?
+        .to_string();
+    let api_key = relay
+        .get("apiKey")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+    let model = relay
+        .get("actualModel")
+        .and_then(|v| v.as_str())
+        // Legacy tolerance: relay files written by ≤v5.3.8 (which had a 1M
+        // toggle) may carry a `[1m]` suffix on actualModel. Strip it so the
+        // surfaced active-model id matches the user's stored modelId —
+        // otherwise the App Manager card's "currently applied" highlight
+        // fails to match after a rescan. Nothing writes the suffix any more.
+        .map(|s| s.strip_suffix("[1m]").unwrap_or(s))
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+    let name = relay
+        .get("modelName")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+
+    Some(ModelInfo {
+        name,
+        model,
+        base_url: None,
+        api_key,
+        anthropic_url: Some(anthropic_url),
+        protocol: Some("anthropic".to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+/// Surgically remove the env keys we own from ~/.claude/settings.json and
+/// drop the relay file. Unlike the generic restore (which deletes the whole
+/// config file), this preserves allowedTools / hooks / anything else the user
+/// keeps in settings.json — deleting it wholesale would wipe their Claude Code
+/// setup, not just our model config.
+fn restore_claudecode_to_official() -> ApplyResult {
+    const OUR_ENV_KEYS: [&str; 11] = [
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_MODEL",
+        // Kept for migration cleanup: older applies wrote this now-deprecated
+        // var, so restore must still strip it from legacy settings.json even
+        // though apply_claudecode no longer writes it.
+        "ANTHROPIC_SMALL_FAST_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        // Pins subagents to the upstream model in relay mode (new env var,
+        // replaces the small-fast tier's role for subagent selection).
+        "CLAUDE_CODE_SUBAGENT_MODEL",
+        "API_TIMEOUT_MS",
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+    ];
+
+    if let Some(home) = dirs::home_dir() {
+        let settings_path = home.join(".claude").join("settings.json");
+        if settings_path.exists() {
+            match read_json_file(&settings_path) {
+                Some(mut config) => {
+                    if let Some(env) = config.get_mut("env").and_then(|v| v.as_object_mut()) {
+                        for key in OUR_ENV_KEYS {
+                            env.remove(key);
+                        }
+                        let _ = write_json_file(&settings_path, &config);
+                    }
+                }
+                None => {
+                    // Can't parse settings.json → can't strip our env keys. Abort
+                    // BEFORE deleting the relay file: in bridge mode ANTHROPIC_BASE_URL
+                    // still points at the proxy, so dropping the relay would leave
+                    // Claude Code 503-ing on every request while we claim success.
+                    return ApplyResult {
+                        success: false,
+                        message:
+                            "~/.claude/settings.json couldn't be parsed, so EchoBird's keys can't be cleanly removed. Restore aborted to avoid leaving Claude Code pointed at a stopped proxy — fix the file and try again."
+                                .to_string(),
+                    };
+                }
+            }
+        }
+    }
+
+    let relay_path = echobird_dir().join("claudecode.json");
+    if relay_path.exists() {
+        let _ = fs::remove_file(&relay_path);
+    }
+
+    ApplyResult {
+        success: true,
+        message: "Claude Code restored to official provider. Restart Claude Code for the change to take effect."
+            .to_string(),
+    }
+}
+
+fn apply_aider(model_info: &ModelInfo) -> ApplyResult {
+    let config_path = dirs::home_dir().unwrap_or_default().join(".aider.conf.yml");
+    let mut content = fs::read_to_string(&config_path).unwrap_or_default();
+
+    let model = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if !model.is_empty() {
+        content = yaml_write(&content, "model", model);
+    }
+
+    let protocol = model_info.protocol.as_deref().unwrap_or("openai");
+    if protocol == "anthropic" {
+        if let Some(ref k) = model_info.api_key {
+            content = yaml_write(&content, "anthropic-api-key", k);
+        }
+        content = yaml_remove(&content, "openai-api-key");
+        content = yaml_remove(&content, "openai-api-base");
+    } else {
+        if let Some(ref k) = model_info.api_key {
+            content = yaml_write(&content, "openai-api-key", k);
+        }
+        if let Some(ref u) = model_info.base_url {
+            content = yaml_write(&content, "openai-api-base", u);
+        }
+        content = yaml_remove(&content, "anthropic-api-key");
+    }
+
+    ensure_parent(&config_path);
+    match fs::write(&config_path, &content) {
+        Ok(_) => ApplyResult {
+            success: true,
+            message: format!("Model \"{}\" applied to Aider ({}).", model, protocol),
+        },
+        Err(e) => ApplyResult {
+            success: false,
+            message: format!("Aider error: {}", e),
+        },
+    }
+}
+
+/// Upsert a `KEY=value` line into a dotenv body. Replaces the first
+/// uncommented line whose key matches; otherwise appends. Commented lines
+/// and every other key (the user's data-source tokens, temperature /
+/// timeout knobs) are left untouched.
+fn env_upsert(content: &str, key: &str, value: &str) -> String {
+    let mut replaced = false;
+    let mut lines: Vec<String> = content
+        .lines()
+        .map(|line| {
+            if !replaced {
+                let trimmed = line.trim_start();
+                let is_match = !trimmed.starts_with('#')
+                    && trimmed
+                        .split_once('=')
+                        .map(|(k, _)| k.trim() == key)
+                        .unwrap_or(false);
+                if is_match {
+                    replaced = true;
+                    return format!("{key}={value}");
+                }
+            }
+            line.to_string()
+        })
+        .collect();
+    if !replaced {
+        lines.push(format!("{key}={value}"));
+    }
+    let mut out = lines.join("\n");
+    out.push('\n');
+    out
+}
+
+/// Vibe-Trading (HKUDS) — dotenv at `~/.vibe-trading/.env`. The agent
+/// resolves its LLM through LangChain by reading the env vars named for
+/// `LANGCHAIN_PROVIDER`. Every endpoint EchoBird points it at is
+/// OpenAI-compatible, so pin the provider to `openai` and feed it the
+/// custom base URL / key / model. Single EchoBird-owned model switch;
+/// the user's data-source tokens and other knobs survive the per-key upsert.
+fn apply_vibe_trading(model_info: &ModelInfo) -> ApplyResult {
+    let config_path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".vibe-trading")
+        .join(".env");
+    let mut content = fs::read_to_string(&config_path).unwrap_or_default();
+
+    let model = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    let base_url = model_info.base_url.as_deref().unwrap_or("");
+    let api_key = model_info.api_key.as_deref().unwrap_or("");
+
+    content = env_upsert(&content, "LANGCHAIN_PROVIDER", "openai");
+    if !model.is_empty() {
+        content = env_upsert(&content, "LANGCHAIN_MODEL_NAME", model);
+    }
+    if !base_url.is_empty() {
+        content = env_upsert(&content, "OPENAI_BASE_URL", base_url);
+    }
+    if !api_key.is_empty() {
+        content = env_upsert(&content, "OPENAI_API_KEY", api_key);
+    }
+
+    ensure_parent(&config_path);
+    match fs::write(&config_path, &content) {
+        Ok(_) => ApplyResult {
+            success: true,
+            message: format!("Model \"{}\" applied to Vibe-Trading.", model),
+        },
+        Err(e) => ApplyResult {
+            success: false,
+            message: format!("Vibe-Trading error: {}", e),
+        },
+    }
+}
+
+fn read_aider() -> Option<ModelInfo> {
+    let path = dirs::home_dir()?.join(".aider.conf.yml");
+    let content = fs::read_to_string(&path).ok()?;
+    let model = yaml_read(&content, "model");
+    if model.is_empty() {
+        return None;
+    }
+    let ok = yaml_read(&content, "openai-api-key");
+    let ak = yaml_read(&content, "anthropic-api-key");
+    let api_key = if !ok.is_empty() {
+        Some(ok)
+    } else if !ak.is_empty() {
+        Some(ak)
+    } else {
+        None
+    };
+    let bu = yaml_read(&content, "openai-api-base");
+    Some(ModelInfo {
+        name: Some(model.clone()),
+        model: Some(model),
+        base_url: if bu.is_empty() { None } else { Some(bu) },
+        api_key,
+        anthropic_url: None,
+        protocol: None,
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+/// Read the active model back from `~/.vibe-trading/.env`. EchoBird always
+/// writes the OpenAI-compatible block, so the model lives in
+/// `LANGCHAIN_MODEL_NAME` with `OPENAI_BASE_URL` / `OPENAI_API_KEY`.
+fn read_vibe_trading() -> Option<ModelInfo> {
+    let path = dirs::home_dir()?.join(".vibe-trading").join(".env");
+    let content = fs::read_to_string(&path).ok()?;
+    let model = env_read(&content, "LANGCHAIN_MODEL_NAME");
+    if model.is_empty() {
+        return None;
+    }
+    let base_url = env_read(&content, "OPENAI_BASE_URL");
+    let api_key = env_read(&content, "OPENAI_API_KEY");
+    Some(ModelInfo {
+        name: Some(model.clone()),
+        model: Some(model),
+        base_url: if base_url.is_empty() {
+            None
+        } else {
+            Some(base_url)
+        },
+        api_key: if api_key.is_empty() {
+            None
+        } else {
+            Some(api_key)
+        },
+        anthropic_url: None,
+        protocol: None,
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+/// Read the value of an uncommented `KEY=value` line from a dotenv body.
+/// Returns an empty string when the key is absent. Strips surrounding
+/// whitespace and a single layer of matching quotes.
+fn env_read(content: &str, key: &str) -> String {
+    for line in content.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            continue;
+        }
+        if let Some((k, v)) = trimmed.split_once('=') {
+            if k.trim() == key {
+                let v = v.trim();
+                let unquoted = v
+                    .strip_prefix('"')
+                    .and_then(|s| s.strip_suffix('"'))
+                    .or_else(|| v.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+                    .unwrap_or(v);
+                return unquoted.to_string();
+            }
+        }
+    }
+    String::new()
+}
+
+// ════════════════════════════════════════════════════════════════
+//  WorkBuddy (Tencent CodeBuddy 办公版) → ~/.workbuddy/models.json
+//  Shape: { models: [{ id, name, vendor, url, apiKey, maxInputTokens,
+//  maxOutputTokens, supportsToolCall, supportsImages }], availableModels: [id] }
+//
+//  Notes:
+//   • WorkBuddy uses its OWN ~/.workbuddy dir — NOT the ~/.codebuddy that the
+//     CodeBuddy IDE uses. (Earlier docs that said .codebuddy were CodeBuddy's,
+//     not WorkBuddy's.)
+//   • `url` MUST be the full /chat/completions endpoint.
+//   • File must be UTF-8 WITHOUT BOM — some desktop builds fail to parse a
+//     BOM'd models.json. write_json_file writes raw UTF-8 (no BOM), so this
+//     is satisfied for free.
+//   • Single-entry overwrite = "switch model" semantics, matching every
+//     other apply_* (one entry, never accumulates).
+// ════════════════════════════════════════════════════════════════
+
+fn apply_workbuddy(model_info: &ModelInfo) -> ApplyResult {
+    let config_path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".workbuddy")
+        .join("models.json");
+
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("echobird-model");
+    let display_name = model_info
+        .name
+        .as_deref()
+        .or(model_info.model.as_deref())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(model_id);
+
+    let base_url = model_info.base_url.as_deref().unwrap_or("");
+    let api_key = model_info.api_key.as_deref().unwrap_or("");
+    if base_url.is_empty() || api_key.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "WorkBuddy needs both a base URL and an API key — pick a model first."
+                .to_string(),
+        };
+    }
+
+    // WorkBuddy requires the full /chat/completions URL.
+    let mut url = base_url.trim_end_matches('/').to_string();
+    if !url.ends_with("/chat/completions") {
+        url.push_str("/chat/completions");
+    }
+
+    let vendor = extract_domain_name(base_url);
+
+    let config = serde_json::json!({
+        "models": [{
+            "id": model_id,
+            "name": display_name,
+            "vendor": vendor,
+            "url": url,
+            "apiKey": api_key,
+            "maxInputTokens": 200000,
+            "maxOutputTokens": 8192,
+            "supportsToolCall": true,
+            "supportsImages": true,
+        }],
+        "availableModels": [model_id],
+    });
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => ApplyResult {
+            success: true,
+            message: format!(
+                "Model \"{}\" applied to WorkBuddy. Fully quit and reopen WorkBuddy, then select it in the model picker.",
+                display_name
+            ),
+        },
+        Err(e) => ApplyResult {
+            success: false,
+            message: format!("WorkBuddy error: {}", e),
+        },
+    }
+}
+
+fn read_workbuddy() -> Option<ModelInfo> {
+    let path = dirs::home_dir()?.join(".workbuddy").join("models.json");
+    let config = read_json_file(&path)?;
+    let models = config.get("models")?.as_array()?;
+    let m = models.first()?;
+    let model = m.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    if model.is_empty() {
+        return None;
+    }
+    let base_url = m
+        .get("url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim_end_matches("/chat/completions")
+        .trim_end_matches('/')
+        .to_string();
+    Some(ModelInfo {
+        name: m.get("name").and_then(|v| v.as_str()).map(String::from),
+        model: Some(model.to_string()),
+        base_url: if base_url.is_empty() {
+            None
+        } else {
+            Some(base_url)
+        },
+        api_key: m.get("apiKey").and_then(|v| v.as_str()).map(String::from),
+        anthropic_url: None,
+        protocol: None,
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Grok Build CLI (xAI) — sectioned TOML
+//
+// Config shape per https://docs.x.ai/build/overview:
+//
+//   [model.echobird]
+//   model    = "deepseek-chat"
+//   base_url = "https://api.deepseek.com/v1"
+//   name     = "EchoBird"
+//   env_key  = "ECHOBIRD_GROK_API_KEY"
+//
+//   [models]
+//   default  = "echobird"
+//
+// Grok reads the API key from $ECHOBIRD_GROK_API_KEY at runtime. To make
+// `grok` runnable from any terminal without manual exports, we ALSO write
+// ~/.echobird/grok.json holding the real key — process_manager injects
+// this into the env when launching grok from App Manager. Users running
+// `grok` from their own shell need to `export ECHOBIRD_GROK_API_KEY=...`
+// themselves (or set it once via their shell rc); the success message
+// surfaces this caveat.
+//
+// We rewrite ONLY the [model.echobird] and [models] sections — every
+// other thing the user has in ~/.grok/config.toml (skills paths, plugin
+// paths, marketplace sources, permission mode, hooks) is preserved.
+// ════════════════════════════════════════════════════════════════
+
+const GROK_PROFILE_NAME: &str = "echobird";
+const GROK_API_KEY_ENV: &str = "ECHOBIRD_GROK_API_KEY";
+
+fn grok_config_path() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_default()
+        .join(".grok")
+        .join("config.toml")
+}
+
+/// Remove all lines belonging to `[section_header]` (e.g. `[models]` or
+/// `[model.echobird]`) and continue until the next `[…]` table header or
+/// EOF. Preserves every other line verbatim.
+fn toml_strip_section(content: &str, section_header: &str) -> String {
+    let header_trimmed = section_header.trim();
+    let mut out: Vec<&str> = Vec::with_capacity(content.lines().count());
+    let mut skipping = false;
+    for line in content.lines() {
+        let t = line.trim();
+        if t.starts_with('[') && t.ends_with(']') {
+            skipping = t == header_trimmed;
+            if skipping {
+                continue;
+            }
+        }
+        if skipping {
+            continue;
+        }
+        out.push(line);
+    }
+    // Trim any trailing blank lines from the strip, leave one separator at the end.
+    while out.last().map(|l| l.trim().is_empty()).unwrap_or(false) {
+        out.pop();
+    }
+    out.join("\n")
+}
+
+fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty.".to_string(),
+        };
+    }
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .map(|u| u.trim_end_matches('/').to_string())
+        .filter(|u| !u.is_empty())
+        .unwrap_or_else(|| "https://api.x.ai/v1".to_string());
+    let display_name = model_info.name.as_deref().unwrap_or(model_id);
+    let api_key = match model_info.api_key.as_deref().filter(|k| !k.is_empty()) {
+        Some(k) => k.to_string(),
+        None => {
+            return ApplyResult {
+                success: false,
+                message: "API Key is empty, cannot apply Grok config.".to_string(),
+            };
+        }
+    };
+
+    let config_path = grok_config_path();
+    let existing = fs::read_to_string(&config_path).unwrap_or_default();
+
+    // Surgically remove any prior [model.echobird] and [models] sections,
+    // then append fresh ones. Preserves the user's other config.
+    let our_model_header = format!("[model.{}]", GROK_PROFILE_NAME);
+    let mut stripped = toml_strip_section(&existing, &our_model_header);
+    stripped = toml_strip_section(&stripped, "[models]");
+
+    let new_section = format!(
+        "\n\n[model.{name}]\nmodel = \"{model}\"\nbase_url = \"{base}\"\nname = \"{display}\"\nenv_key = \"{env}\"\n\n[models]\ndefault = \"{name}\"\n",
+        name = GROK_PROFILE_NAME,
+        model = toml_escape(model_id),
+        base = toml_escape(&base_url),
+        display = toml_escape(display_name),
+        env = GROK_API_KEY_ENV,
+    );
+    let final_content = format!("{}{}", stripped.trim_end(), new_section);
+
+    ensure_parent(&config_path);
+    if let Err(e) = fs::write(&config_path, &final_content) {
+        return ApplyResult {
+            success: false,
+            message: format!("Grok config error: {}", e),
+        };
+    }
+
+    // Relay file — holds the actual key so process_manager can inject it
+    // into $ECHOBIRD_GROK_API_KEY when launching grok from App Manager.
+    let relay_path = echobird_dir().join("grok.json");
+    let relay = serde_json::json!({
+        "apiKey": api_key,
+        "baseUrl": base_url,
+        "actualModel": model_id,
+        "modelName": display_name,
+        "envKey": GROK_API_KEY_ENV,
+    });
+    let _ = write_json_file(&relay_path, &relay);
+
+    ApplyResult {
+        success: true,
+        message: format!(
+            "Model \"{}\" applied to Grok. When running `grok` from a terminal directly, also set {}=<your_key> first; launching from EchoBird injects it automatically.",
+            display_name, GROK_API_KEY_ENV
+        ),
+    }
+}
+
+fn restore_grok_to_official() -> ApplyResult {
+    let config_path = grok_config_path();
+    let existing = fs::read_to_string(&config_path).unwrap_or_default();
+
+    // Only strip what we wrote; leave every other section alone so grok
+    // falls back to its xAI default (auth.json / GROK_CODE_XAI_API_KEY).
+    let our_model_header = format!("[model.{}]", GROK_PROFILE_NAME);
+    let mut stripped = toml_strip_section(&existing, &our_model_header);
+    stripped = toml_strip_section(&stripped, "[models]");
+
+    let final_content = stripped.trim_end().to_string() + "\n";
+
+    if existing.is_empty() && final_content.trim().is_empty() {
+        // Nothing to do — config was empty, no echobird block to remove.
+    } else if let Err(e) = fs::write(&config_path, &final_content) {
+        return ApplyResult {
+            success: false,
+            message: format!("Failed to clean Grok config: {}", e),
+        };
+    }
+
+    let relay_path = echobird_dir().join("grok.json");
+    if relay_path.exists() {
+        let _ = fs::remove_file(&relay_path);
+    }
+
+    ApplyResult {
+        success: true,
+        message:
+            "Grok restored to xAI official. Run `grok login` if you haven't authenticated with xAI."
+                .to_string(),
+    }
+}
+
+fn read_grok() -> Option<ModelInfo> {
+    // Source of truth is the relay file (holds the real key + URL).
+    // ~/.grok/config.toml only stores env_key, not the key itself.
+    let relay_path = echobird_dir().join("grok.json");
+    let relay = read_json_file(&relay_path)?;
+
+    let model = relay
+        .get("actualModel")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())?
+        .to_string();
+    let base_url = relay
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+    let api_key = relay
+        .get("apiKey")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+
+    Some(ModelInfo {
+        name: Some(model.clone()),
+        model: Some(model),
+        base_url,
+        api_key,
+        anthropic_url: None,
+        protocol: Some("openai".to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Qwen Code: direct write to ~/.qwen/settings.json
+//  Format: { modelProviders: { openai: [...] }, env: {...},
+//           security: { auth: { selectedType } }, model: { name } }
+// ════════════════════════════════════════════════════════════════
+
+fn apply_qwen_code(model_info: &ModelInfo) -> ApplyResult {
+    let config_path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".qwen")
+        .join("settings.json");
+
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty".to_string(),
+        };
+    }
+
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+    let api_key = model_info.api_key.as_deref().unwrap_or("");
+    let protocol = model_info.protocol.as_deref().unwrap_or("openai");
+
+    // Qwen Code supports: openai, anthropic, gemini
+    let selected_type = match protocol {
+        "anthropic" => "anthropic",
+        "gemini" => "gemini",
+        _ => "openai",
+    };
+
+    // Env key name derived from domain to avoid collisions
+    let domain = extract_domain_name(&base_url);
+    let env_key = format!("ECHOBIRD_{}_API_KEY", domain.to_uppercase());
+    let display_name = model_info.name.as_deref().unwrap_or(model_id);
+
+    // Read existing config or start fresh
+    let mut config = read_json_file(&config_path).unwrap_or(serde_json::json!({}));
+
+    // Build the model provider entry
+    let provider_entry = serde_json::json!({
+        "id": model_id,
+        "name": display_name,
+        "baseUrl": base_url,
+        "description": model_id,  // Use model ID instead of domain name
+        "envKey": env_key
+    });
+
+    // Write modelProviders — replace the protocol array with single entry
+    config["modelProviders"][selected_type] = serde_json::json!([provider_entry]);
+
+    // Write env — set the API key
+    config["env"][&env_key] = serde_json::Value::String(api_key.to_string());
+
+    // Write security auth type
+    config["security"]["auth"]["selectedType"] =
+        serde_json::Value::String(selected_type.to_string());
+
+    // Write active model
+    config["model"]["name"] = serde_json::Value::String(model_id.to_string());
+
+    match write_json_file(&config_path, &config) {
+        Ok(_) => {
+            log::info!(
+                "[ToolConfigManager] QwenCode config written: {} ({})",
+                model_id,
+                selected_type
+            );
+            ApplyResult {
+                success: true,
+                message: format!(
+                    "Model \"{}\" configured for Qwen Code. Restart qwen to apply.",
+                    display_name
+                ),
+            }
+        }
+        Err(e) => ApplyResult {
+            success: false,
+            message: e,
+        },
+    }
+}
+
+fn read_qwen_code() -> Option<ModelInfo> {
+    let config_path = dirs::home_dir()?.join(".qwen").join("settings.json");
+    let config = read_json_file(&config_path)?;
+
+    // Read active model name
+    let model_name = config.pointer("/model/name")?.as_str()?.to_string();
+    if model_name.is_empty() {
+        return None;
+    }
+
+    // Read auth type to determine which provider array to look at
+    let selected_type = config
+        .pointer("/security/auth/selectedType")
+        .and_then(|v| v.as_str())
+        .unwrap_or("openai");
+
+    // Find the model entry in the provider array
+    let providers = config
+        .pointer(&format!("/modelProviders/{}", selected_type))
+        .and_then(|v| v.as_array())?;
+
+    let entry = providers
+        .iter()
+        .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(&model_name))
+        .or_else(|| providers.first())?;
+
+    let base_url = entry
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    // Resolve API key from env object via envKey reference
+    let api_key = entry
+        .get("envKey")
+        .and_then(|v| v.as_str())
+        .and_then(|env_key| config.pointer(&format!("/env/{}", env_key)))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    Some(ModelInfo {
+        name: entry
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        model: Some(model_name),
+        base_url,
+        api_key,
+        anthropic_url: None,
+        protocol: Some(selected_type.to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Pi (earendil-works/pi) — split config:
+//   ~/.pi/agent/models.json    — provider definitions (custom OpenAI/Anthropic-compat)
+//   ~/.pi/agent/settings.json  — defaultProvider + defaultModel
+//  We register a single "echobird" provider in models.json and point
+//  settings.json at it. Anthropic-protocol models switch the api type
+//  to "anthropic-messages" and use anthropicUrl as the baseUrl.
+//  Docs: https://pi.dev/docs/latest/models
+// ════════════════════════════════════════════════════════════════
+
+fn pi_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_default()
+        .join(".pi")
+        .join("agent")
+}
+
+fn apply_pi(model_info: &ModelInfo) -> ApplyResult {
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty".to_string(),
+        };
+    }
+
+    // OpenAI-only — Pi's anthropic-messages API uses the @anthropic-ai/sdk
+    // which appends /v1/messages to baseURL; model companies' Anthropic
+    // endpoints have inconsistent path structures (some serve at <root>/v1/
+    // messages, some don't), so the SDK's path-append can't be made reliable
+    // across them. We don't expose Anthropic for Pi (same call as kimi) —
+    // users can configure an anthropic provider manually in ~/.pi/agent/
+    // models.json if they need it.
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+    let api_type = "openai-completions";
+
+    let provider_id = "echobird";
+
+    // models.json — register/replace the echobird provider
+    let models_path = pi_dir().join("models.json");
+    let mut models_config = read_json_file(&models_path).unwrap_or(serde_json::json!({}));
+    if !models_config.is_object() {
+        models_config = serde_json::json!({});
+    }
+    if !models_config
+        .get("providers")
+        .map(|v| v.is_object())
+        .unwrap_or(false)
+    {
+        models_config["providers"] = serde_json::json!({});
+    }
+    models_config["providers"][provider_id] = serde_json::json!({
+        "baseUrl": base_url,
+        "api": api_type,
+        "apiKey": model_info.api_key.as_deref().unwrap_or(""),
+        "models": [{ "id": model_id }]
+    });
+    if let Err(e) = write_json_file(&models_path, &models_config) {
+        return ApplyResult {
+            success: false,
+            message: e,
+        };
+    }
+
+    // settings.json — point defaultProvider/defaultModel at our provider
+    let settings_path = pi_dir().join("settings.json");
+    let mut settings = read_json_file(&settings_path).unwrap_or(serde_json::json!({}));
+    if !settings.is_object() {
+        settings = serde_json::json!({});
+    }
+    settings["defaultProvider"] = serde_json::Value::String(provider_id.to_string());
+    settings["defaultModel"] = serde_json::Value::String(model_id.to_string());
+    if let Err(e) = write_json_file(&settings_path, &settings) {
+        return ApplyResult {
+            success: false,
+            message: e,
+        };
+    }
+
+    log::info!(
+        "[ToolConfigManager] Pi configured: provider={}, model={}, api={}",
+        provider_id,
+        model_id,
+        api_type
+    );
+    ApplyResult {
+        success: true,
+        message: format!(
+            "Model \"{}\" configured for Pi ({}). Restart pi to apply.",
+            model_info.name.as_deref().unwrap_or(model_id),
+            api_type
+        ),
+    }
+}
+
+fn read_pi() -> Option<ModelInfo> {
+    let dir = pi_dir();
+    let settings = read_json_file(&dir.join("settings.json"))?;
+    let provider_id = settings.get("defaultProvider")?.as_str()?;
+    let model_id = settings.get("defaultModel")?.as_str()?.to_string();
+    if model_id.is_empty() {
+        return None;
+    }
+
+    let models = read_json_file(&dir.join("models.json"))?;
+    let prov = models.pointer(&format!("/providers/{}", provider_id))?;
+
+    let api_type = prov
+        .get("api")
+        .and_then(|v| v.as_str())
+        .unwrap_or("openai-completions");
+    let base_url = prov
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let api_key = prov
+        .get("apiKey")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let (base, anthro) = if api_type == "anthropic-messages" {
+        (None, base_url)
+    } else {
+        (base_url, None)
+    };
+
+    Some(ModelInfo {
+        name: Some(model_id.clone()),
+        model: Some(model_id),
+        base_url: base,
+        api_key,
+        anthropic_url: anthro,
+        protocol: Some(
+            if api_type == "anthropic-messages" {
+                "anthropic"
+            } else {
+                "openai"
+            }
+            .to_string(),
+        ),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+fn restore_pi_to_official() -> ApplyResult {
+    let dir = pi_dir();
+    // Delete only our additions — the echobird provider entry in models.json,
+    // and clear defaultProvider/defaultModel in settings.json. Don't nuke the
+    // files (other providers and unrelated settings stay intact).
+    let models_path = dir.join("models.json");
+    if let Some(mut models) = read_json_file(&models_path) {
+        if models
+            .get("providers")
+            .map(|v| v.is_object())
+            .unwrap_or(false)
+        {
+            if let Some(obj) = models["providers"].as_object_mut() {
+                obj.remove("echobird");
+            }
+            let _ = write_json_file(&models_path, &models);
+        }
+    }
+
+    let settings_path = dir.join("settings.json");
+    if let Some(mut settings) = read_json_file(&settings_path) {
+        if let Some(obj) = settings.as_object_mut() {
+            obj.remove("defaultProvider");
+            obj.remove("defaultModel");
+        }
+        let _ = write_json_file(&settings_path, &settings);
+    }
+
+    ApplyResult {
+        success: true,
+        message: "Pi restored — echobird provider removed, defaults cleared. Pi will fall back to its built-in providers on next launch.".to_string(),
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Kimi Code (MoonshotAI/kimi-code) — TOML config at ~/.kimi-code/config.toml
+//   Schema (https://moonshotai.github.io/kimi-code/en/configuration/config-files):
+//     default_model = "<alias>"              (top-level scalar)
+//     [providers.<name>]   type / base_url / api_key / custom_headers / env
+//     [models.<alias>]     provider / model / max_context_size / ...
+//   Provider type maps from protocol: anthropic → "anthropic", else "openai".
+//   We register a single "echobird" provider + "echobird" model alias, point
+//   default_model at it, and write the api_key into the provider entry (the
+//   CLI reads credentials ONLY from config — no shell-env fallback, so we
+//   cannot inject via env). Surgical string-level edits (toml_write_top /
+//   toml_write_table_value[_raw]) preserve the user's comments, thinking,
+//   loop_control, permission, hooks, and any unrelated providers/models.
+//   KIMI_CODE_HOME env overrides the whole data dir (detection blind spot —
+//   same shape as MiMo's MIMOCODE_HOME). max_context_size is required (≥1);
+//   we default to 262144 when ModelInfo has no context size.
+// ════════════════════════════════════════════════════════════════
+
+fn kimicode_dir() -> PathBuf {
+    // KIMI_CODE_HOME overrides the whole data dir; the file is always
+    // config.toml regardless (per the docs).
+    if let Ok(home) = std::env::var("KIMI_CODE_HOME") {
+        if !home.is_empty() {
+            return PathBuf::from(home);
+        }
+    }
+    dirs::home_dir().unwrap_or_default().join(".kimi-code")
+}
+
+fn kimicode_config_path() -> PathBuf {
+    kimicode_dir().join("config.toml")
+}
+
+fn apply_kimicode(model_info: &ModelInfo) -> ApplyResult {
+    let model_id = model_info
+        .model
+        .as_deref()
+        .or(model_info.name.as_deref())
+        .unwrap_or("");
+    if model_id.is_empty() {
+        return ApplyResult {
+            success: false,
+            message: "Model ID is empty, cannot apply Kimi Code config".to_string(),
+        };
+    }
+
+    // Kimi Code is exposed as OpenAI-only (apiProtocol in paths.json is
+    // ["openai"]). The anthropic provider type uses the Anthropic SDK, which
+    // appends /v1/messages to base_url itself — so a base_url carrying /v1
+    // double-joins (404), and third-party Anthropic-compatible relays have
+    // inconsistent path structures that we can't write correctly in general.
+    // We don't expose Anthropic for kimi; the user can still configure an
+    // anthropic provider manually in config.toml if they need it.
+    let base_url = model_info
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_string();
+    let provider_type = "openai";
+
+    let api_key = model_info.api_key.as_deref().unwrap_or("");
+    let provider = "echobird";
+    let alias = "echobird"; // model alias == default_model value
+    let providers_table = format!("providers.{}", provider);
+    let models_table = format!("models.{}", alias);
+
+    let config_path = kimicode_config_path();
+    ensure_parent(&config_path);
+    let mut content = fs::read_to_string(&config_path).unwrap_or_default();
+
+    // Top-level default_model → our alias.
+    content = toml_write_top(&content, "default_model", alias);
+
+    // [providers.echobird]
+    content = toml_write_table_value(&content, &providers_table, "type", provider_type);
+    content = toml_write_table_value(&content, &providers_table, "base_url", &base_url);
+    content = toml_write_table_value(&content, &providers_table, "api_key", api_key);
+
+    // [models.echobird] — max_context_size is required (≥1); default 262144.
+    content = toml_write_table_value(&content, &models_table, "provider", provider);
+    content = toml_write_table_value(&content, &models_table, "model", &model_id);
+    content = toml_write_table_value_raw(&content, &models_table, "max_context_size", "262144");
+
+    if let Err(e) = fs::write(&config_path, &content) {
+        return ApplyResult {
+            success: false,
+            message: format!("Kimi Code config error: {}", e),
+        };
+    }
+
+    log::info!(
+        "[ToolConfigManager] Kimi Code configured: provider={}, alias={}, model={}, type={}",
+        provider,
+        alias,
+        model_id,
+        provider_type
+    );
+    ApplyResult {
+        success: true,
+        message: format!(
+            "Model \"{}\" configured for Kimi Code. Restart `kimi` or use /model to select {}.",
+            model_info.name.as_deref().unwrap_or(model_id),
+            alias
+        ),
+    }
+}
+
+fn read_kimicode() -> Option<ModelInfo> {
+    let content = fs::read_to_string(&kimicode_config_path()).ok()?;
+    if content.trim().is_empty() {
+        return None;
+    }
+
+    // Collect tables as (header, [(key, value), ...]) + track the top-level
+    // default_model scalar. Values are stripped of inline comments and
+    // surrounding quotes — sufficient for the simple scalars we own.
+    let mut tables: Vec<(String, Vec<(String, String)>)> = Vec::new();
+    let mut cur: Option<(String, Vec<(String, String)>)> = None;
+    let mut top_default_model: Option<String> = None;
+    for raw in content.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') && line.ends_with(']') {
+            if let Some(t) = cur.take() {
+                tables.push(t);
+            }
+            let header = line.trim_matches(|c| c == '[' || c == ']').to_string();
+            cur = Some((header, Vec::new()));
+            continue;
+        }
+        let Some((k, v)) = line.split_once('=') else {
+            continue;
+        };
+        let k = k.trim().to_string();
+        let v = v
+            .split('#')
+            .next()
+            .unwrap_or(v)
+            .trim()
+            .trim_matches('"')
+            .to_string();
+        if let Some((_, kvs)) = cur.as_mut() {
+            kvs.push((k, v));
+        } else if k == "default_model" {
+            top_default_model = Some(v);
+        }
+    }
+    if let Some(t) = cur.take() {
+        tables.push(t);
+    }
+
+    // Only round-trip when our echobird alias is the active default. If the
+    // user switched to a managed/native model via /model, return None so the
+    // model-picker shows nothing selected (correct — not an EchoBird model).
+    let alias = top_default_model?;
+    if alias != "echobird" {
+        return None;
+    }
+
+    let prov = tables.iter().find(|(h, _)| h == "providers.echobird")?;
+    let model = tables.iter().find(|(h, _)| h == "models.echobird")?;
+    let model_id = model
+        .1
+        .iter()
+        .find(|(k, _)| k == "model")
+        .map(|(_, v)| v.clone())?;
+    if model_id.is_empty() {
+        return None;
+    }
+
+    let provider_type = prov
+        .1
+        .iter()
+        .find(|(k, _)| k == "type")
+        .map(|(_, v)| v.clone())
+        .unwrap_or_default();
+    let base_url = prov
+        .1
+        .iter()
+        .find(|(k, _)| k == "base_url")
+        .map(|(_, v)| v.clone())
+        .unwrap_or_default();
+    let api_key = prov
+        .1
+        .iter()
+        .find(|(k, _)| k == "api_key")
+        .map(|(_, v)| v.clone())
+        .unwrap_or_default();
+
+    let (base, anthro, protocol) = if provider_type == "anthropic" {
+        (None, Some(base_url), "anthropic")
+    } else {
+        (Some(base_url), None, "openai")
+    };
+    Some(ModelInfo {
+        name: Some(model_id.clone()),
+        model: Some(model_id),
+        base_url: base,
+        api_key: if api_key.is_empty() {
+            None
+        } else {
+            Some(api_key)
+        },
+        anthropic_url: anthro,
+        protocol: Some(protocol.to_string()),
+        display_model: None,
+        relay_mode: None,
+        responses_passthrough: None,
+        web_search: None,
+        one_m_context: None,
+    })
+}
+
+fn restore_kimicode_to_official() -> ApplyResult {
+    let config_path = kimicode_config_path();
+    let content = fs::read_to_string(&config_path).unwrap_or_default();
+    if content.trim().is_empty() {
+        return ApplyResult {
+            success: true,
+            message: "Kimi Code config not found — already at official.".to_string(),
+        };
+    }
+
+    // Remove our [providers.echobird] + [models.echobird] table blocks and the
+    // default_model line we set. Preserve everything else (user providers,
+    // managed:kimi-code OAuth entry, thinking, hooks, permission, …). On next
+    // launch Kimi Code falls back to /login (OAuth or Moonshot platform key).
+    let new_content = remove_toml_table(&content, "providers.echobird");
+    let new_content = remove_toml_table(&new_content, "models.echobird");
+    let new_content = remove_toml_top_key(&new_content, "default_model");
+
+    if new_content != content {
+        if let Err(e) = fs::write(&config_path, &new_content) {
+            return ApplyResult {
+                success: false,
+                message: format!("Kimi Code restore error: {}", e),
+            };
+        }
+    }
+
+    ApplyResult {
+        success: true,
+        message: "Kimi Code restored — echobird provider/model removed, default_model cleared. Kimi Code will fall back to /login on next launch.".to_string(),
+    }
+}
+
+/// Remove a `[table]` block (header + its key=value lines, up to the next
+/// section header or EOF). Returns content unchanged if the table is absent.
+fn remove_toml_table(content: &str, table: &str) -> String {
+    let header = format!("[{}]", table);
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
+    let start = lines.iter().position(|l| l.trim() == header.as_str());
+    let Some(start) = start else {
+        return content.to_string();
+    };
+    let end = lines
+        .iter()
+        .enumerate()
+        .skip(start + 1)
+        .find_map(|(i, l)| {
+            let t = l.trim();
+            if t.starts_with('[') && t.ends_with(']') {
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(lines.len());
+    lines.drain(start..end);
+    let mut joined = lines.join("\n");
+    if !joined.ends_with('\n') {
+        joined.push('\n');
+    }
+    joined
+}
+
+/// Remove a top-level `key = ...` line (before any section header).
+fn remove_toml_top_key(content: &str, key: &str) -> String {
+    let mut first_section: Option<usize> = None;
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
+    let mut remove: Option<usize> = None;
+    for (i, line) in lines.iter().enumerate() {
+        let t = line.trim();
+        if first_section.is_none() && t.starts_with('[') {
+            first_section = Some(i);
+        }
+        if first_section.is_some() {
+            break;
+        }
+        if t.starts_with('#') || t.is_empty() {
+            continue;
+        }
+        if let Some((k, _)) = t.split_once('=') {
+            if k.trim() == key {
+                remove = Some(i);
+                break;
+            }
+        }
+    }
+    if let Some(i) = remove {
+        lines.remove(i);
+    }
+    lines.join("\n")
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Simple YAML helpers (key: value format only)
+// ════════════════════════════════════════════════════════════════
+
+fn yaml_read(content: &str, key: &str) -> String {
+    let prefix = format!("{}:", key);
+    for line in content.lines() {
+        let t = line.trim();
+        if t.starts_with('#') {
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix(&prefix) {
+            let v = rest.trim();
+            if let Some(stripped) = v.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+                return stripped.to_string();
+            }
+            if let Some(stripped) = v.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')) {
+                return stripped.to_string();
+            }
+            return v.to_string();
+        }
+    }
+    String::new()
+}
+
+fn yaml_write(content: &str, key: &str, value: &str) -> String {
+    let prefix = format!("{}:", key);
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+    let mut found = false;
+    for line in lines.iter_mut() {
+        let t = line.trim();
+        if !t.starts_with('#') && t.starts_with(&prefix) {
+            *line = format!("{}: {}", key, value);
+            found = true;
+            break;
+        }
+    }
+    if !found {
+        lines.push(format!("{}: {}", key, value));
+    }
+    lines.join("\n")
+}
+
+fn yaml_remove(content: &str, key: &str) -> String {
+    let prefix = format!("{}:", key);
+    content
+        .lines()
+        .filter(|l| l.trim().starts_with('#') || !l.trim().starts_with(&prefix))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Simple TOML helpers (top-level key = "value" only)
+// ════════════════════════════════════════════════════════════════
+
+fn toml_read_top(content: &str, key: &str) -> String {
+    for line in content.lines() {
+        let t = line.trim();
+        if t.starts_with('[') || t.starts_with('#') || t.is_empty() {
+            if t.starts_with('[') {
+                break;
+            } // Entered sections, stop
+            continue;
+        }
+        if let Some((k, v)) = t.split_once('=') {
+            if k.trim() == key {
+                let v = v.trim();
+                if v.starts_with('"') && v.ends_with('"') && v.len() >= 2 {
+                    return v[1..v.len() - 1].to_string();
+                }
+                return v.to_string();
+            }
+        }
+    }
+    String::new()
+}
+
+fn toml_write_top(content: &str, key: &str, value: &str) -> String {
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+    let mut found = false;
+    let mut first_section: Option<usize> = None;
+
+    for (i, line) in lines.iter_mut().enumerate() {
+        let t = line.trim();
+        if first_section.is_none() && t.starts_with('[') {
+            first_section = Some(i);
+        }
+        if first_section.is_some() && i >= first_section.unwrap() {
+            continue;
+        }
+        if let Some((k, _)) = t.split_once('=') {
+            if k.trim() == key {
+                *line = format!("{} = \"{}\"", key, toml_escape(value));
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if !found {
+        let new_line = format!("{} = \"{}\"", key, toml_escape(value));
+        match first_section {
+            Some(i) => lines.insert(i, new_line),
+            None => lines.push(new_line),
+        }
+    }
+    lines.join("\n")
+}
+
+/// Variant of `toml_write_top` that writes the value verbatim, without
+/// wrapping it in `"..."`. Use for booleans (`true`/`false`) and integers
+/// — TOML rejects them when quoted. Mirrors the line-based, overwrite-
+/// or-insert semantics of the string variant.
+fn toml_write_top_raw(content: &str, key: &str, value: &str) -> String {
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+    let mut found = false;
+    let mut first_section: Option<usize> = None;
+
+    for (i, line) in lines.iter_mut().enumerate() {
+        let t = line.trim();
+        if first_section.is_none() && t.starts_with('[') {
+            first_section = Some(i);
+        }
+        if first_section.is_some() && i >= first_section.unwrap() {
+            continue;
+        }
+        if let Some((k, _)) = t.split_once('=') {
+            if k.trim() == key {
+                *line = format!("{} = {}", key, value);
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if !found {
+        let new_line = format!("{} = {}", key, value);
+        match first_section {
+            Some(i) => lines.insert(i, new_line),
+            None => lines.push(new_line),
+        }
+    }
+    lines.join("\n")
+}
+
+/// Surgically write `key = "value"` inside `[table]` of a TOML
+/// document, preserving every other line and section verbatim. If the
+/// table doesn't exist, append it at end-of-file. If the key doesn't
+/// exist inside the table, insert it just after the table header.
+/// Mirrors `toml_write_top` line-based semantics — no full parse, no
+/// reformatting, no comment loss. Used by `apply_codex` to canonicalize
+/// `[model_providers.OpenAI]` fields without clobbering Codex's own
+/// runtime state (`[projects.*]` trust, `[tui.*]` NUX, etc.) that sits
+/// in the same file. Also reused by `codex_proxy::config_manager::
+/// ensure_canonical_config` for its drift-recovery branch.
+pub(crate) fn toml_write_table_value(content: &str, table: &str, key: &str, value: &str) -> String {
+    let header = format!("[{}]", table);
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
+
+    let table_start = lines.iter().position(|l| l.trim() == header.as_str());
+
+    let table_start = match table_start {
+        Some(i) => i,
+        None => {
+            // Table missing — append. Pad with a blank line if the
+            // existing file doesn't already end with one.
+            if !lines.last().map(|l| l.trim().is_empty()).unwrap_or(true) {
+                lines.push(String::new());
+            }
+            lines.push(header);
+            lines.push(format!("{} = \"{}\"", key, toml_escape(value)));
+            return lines.join("\n");
+        }
+    };
+
+    // Find table's end (next section header or EOF).
+    let table_end = lines
+        .iter()
+        .enumerate()
+        .skip(table_start + 1)
+        .find_map(|(i, l)| {
+            let t = l.trim();
+            if t.starts_with('[') && t.ends_with(']') {
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(lines.len());
+
+    // Look for the key inside the table's range.
+    let key_line = (table_start + 1..table_end).find(|&i| {
+        let t = lines[i].trim();
+        if t.starts_with('#') || t.is_empty() {
+            return false;
+        }
+        match t.split_once('=') {
+            Some((k, _)) => k.trim() == key,
+            None => false,
+        }
+    });
+
+    let replacement = format!("{} = \"{}\"", key, toml_escape(value));
+    match key_line {
+        Some(i) => lines[i] = replacement,
+        None => lines.insert(table_start + 1, replacement),
+    }
+
+    lines.join("\n")
+}
+
+/// Variant of `toml_write_table_value` that writes the value verbatim,
+/// without wrapping it in `"..."`. For booleans / integers inside a
+/// table (e.g. `requires_openai_auth = true`). Same surgical line-based
+/// semantics; same preservation of unrelated sections.
+fn toml_write_table_value_raw(content: &str, table: &str, key: &str, value: &str) -> String {
+    let header = format!("[{}]", table);
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
+
+    let table_start = lines.iter().position(|l| l.trim() == header.as_str());
+
+    let table_start = match table_start {
+        Some(i) => i,
+        None => {
+            if !lines.last().map(|l| l.trim().is_empty()).unwrap_or(true) {
+                lines.push(String::new());
+            }
+            lines.push(header);
+            lines.push(format!("{} = {}", key, value));
+            return lines.join("\n");
+        }
+    };
+
+    let table_end = lines
+        .iter()
+        .enumerate()
+        .skip(table_start + 1)
+        .find_map(|(i, l)| {
+            let t = l.trim();
+            if t.starts_with('[') && t.ends_with(']') {
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(lines.len());
+
+    let key_line = (table_start + 1..table_end).find(|&i| {
+        let t = lines[i].trim();
+        if t.starts_with('#') || t.is_empty() {
+            return false;
+        }
+        match t.split_once('=') {
+            Some((k, _)) => k.trim() == key,
+            None => false,
+        }
+    });
+
+    let replacement = format!("{} = {}", key, value);
+    match key_line {
+        Some(i) => lines[i] = replacement,
+        None => lines.insert(table_start + 1, replacement),
+    }
+
+    lines.join("\n")
+}
+
+fn toml_read_table_value(content: &str, table: &str, key: &str) -> String {
+    let header = format!("[{}]", table);
+    let mut in_table = false;
+
+    for line in content.lines() {
+        let t = line.trim();
+        if t.starts_with('[') && t.ends_with(']') {
+            in_table = t == header;
+            continue;
+        }
+        if !in_table || t.starts_with('#') || t.is_empty() {
+            continue;
+        }
+        if let Some((k, v)) = t.split_once('=') {
+            if k.trim() == key {
+                return toml_unquote(v.trim());
+            }
+        }
+    }
+
+    String::new()
+}
+
+fn toml_unquote(value: &str) -> String {
+    let v = value.trim();
+    if v.starts_with('"') && v.ends_with('"') && v.len() >= 2 {
+        v[1..v.len() - 1]
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+    } else {
+        v.to_string()
+    }
+}
+
+fn toml_escape(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn claudecode_model_info(relay_mode: Option<bool>) -> ModelInfo {
+        ModelInfo {
+            name: Some("MiMo v2.5 Pro".to_string()),
+            model: Some("mimo-v2.5-pro".to_string()),
+            base_url: Some("https://api.example.com/v1".to_string()),
+            api_key: Some("test-key".to_string()),
+            anthropic_url: None,
+            protocol: Some("anthropic".to_string()),
+            display_model: None,
+            relay_mode,
+            responses_passthrough: None,
+            web_search: None,
+            one_m_context: None,
+        }
+    }
+
+    #[test]
+    fn claudecode_normalize_never_decorates_model_id() {
+        // The model id must reach the upstream verbatim in every mode. Claude
+        // decorations like the `[1m]` suffix are gone entirely: in bridge mode
+        // Claude Code's own built-in claude-* ids already budget the full
+        // window, and the rewritten upstream id must be exactly what the
+        // third-party provider advertises.
+        for relay_mode in [None, Some(false), Some(true)] {
+            let info =
+                normalize_model_info_for_tool("claudecode", claudecode_model_info(relay_mode));
+            assert_eq!(info.model.as_deref(), Some("mimo-v2.5-pro"));
+        }
+    }
+
+    #[test]
+    fn claudecode_normalize_strips_trailing_v1_from_base_url() {
+        // Relay mode appends `/v1/messages` client-side, so a `/v1` left on the
+        // base URL would double into `/v1/v1/messages`.
+        let info = normalize_model_info_for_tool("claudecode", claudecode_model_info(None));
+        assert_eq!(info.base_url.as_deref(), Some("https://api.example.com"));
+    }
+
+    // API Router (relay) full write-in pins every model tier to the real
+    // upstream model so Claude Code uses the third-party model end-to-end.
+    // Two requirements locked here, per https://code.claude.com/docs/en/model-config:
+    //   * CLAUDE_CODE_SUBAGENT_MODEL must be written — otherwise subagents
+    //     fall back to claude-* ids and bypass the router (breaks "全量").
+    //   * ANTHROPIC_SMALL_FAST_MODEL must NOT be written — Claude Code
+    //     deprecated it in favor of ANTHROPIC_DEFAULT_HAIKU_MODEL (still pinned).
+    #[test]
+    fn claudecode_model_vars_pin_subagent_and_drop_small_fast() {
+        assert!(
+            CLAUDECODE_MODEL_VARS.contains(&"CLAUDE_CODE_SUBAGENT_MODEL"),
+            "relay mode must pin CLAUDE_CODE_SUBAGENT_MODEL so subagents use the third-party model"
+        );
+        assert!(
+            !CLAUDECODE_MODEL_VARS.contains(&"ANTHROPIC_SMALL_FAST_MODEL"),
+            "ANTHROPIC_SMALL_FAST_MODEL is deprecated (favor ANTHROPIC_DEFAULT_HAIKU_MODEL, also pinned) — stop writing it"
+        );
+    }
+
+    // ── claudecode_env_model_id: [1m] opt-in, 1M-tier-only ──
+    // The 1M-context toggle is relay-only and Claude-Code-only. When opted in,
+    // `[1m]` is appended to the 1M-capable tier (MODEL / SONNET / OPUS) so CC
+    // budgets the 1M window; HAIKU + SUBAGENT stay bare (no 1M concept). CC
+    // strips the suffix before sending upstream, so the provider sees the bare id.
+    #[test]
+    fn claudecode_env_model_id_appends_1m_for_1m_tier_when_opt_in() {
+        for &var in CLAUDECODE_MODEL_VARS_1M {
+            assert_eq!(
+                claudecode_env_model_id("mimo-v2.5-pro", var, true),
+                "mimo-v2.5-pro[1m]",
+                "opt-in 1M must decorate the 1M-capable tier var {}",
+                var
+            );
+        }
+    }
+
+    #[test]
+    fn claudecode_env_model_id_leaves_haiku_and_subagent_bare_even_when_opt_in() {
+        for var in ["ANTHROPIC_DEFAULT_HAIKU_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL"] {
+            assert_eq!(
+                claudecode_env_model_id("mimo-v2.5-pro", var, true),
+                "mimo-v2.5-pro",
+                "opt-in must NOT decorate the non-1M tier var {}",
+                var
+            );
+        }
+    }
+
+    #[test]
+    fn claudecode_env_model_id_bare_when_opt_out() {
+        // Opt-out (or unset) → every var stays bare, regardless of tier.
+        for var in CLAUDECODE_MODEL_VARS {
+            assert_eq!(
+                claudecode_env_model_id("mimo-v2.5-pro", var, false),
+                "mimo-v2.5-pro",
+                "opt-out must leave {} bare",
+                var
+            );
+        }
+    }
+}

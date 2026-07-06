@@ -1,9 +1,9 @@
 //! EchoBird thin shell.
 //!
-//! All business logic lives in the private `echobird_core` crate. This
-//! file is intentionally minimal because three things MUST be expanded
-//! at compile time inside the public binary crate, where the
-//! CARGO_MANIFEST_DIR points at this directory:
+//! All business logic lives in the `echobird_core` crate (now in this
+//! repository at ../echobird_core). This file is intentionally minimal
+//! because three things MUST be expanded at compile time inside the
+//! binary crate, where the CARGO_MANIFEST_DIR points at this directory:
 //!
 //!   * `tauri::generate_context!()` resolves `tauri.conf.json`.
 //!   * `include_bytes!("../icons/tray-icon.png")` reads the tray icon.
@@ -12,9 +12,7 @@
 //!     `../../docs/api/tools/install/` because they also feed
 //!     echobird.ai/api/tools/install/.... Internal-only assets (the
 //!     Mother Agent prompt and hints, the Quick-Action task scripts)
-//!     are NOT bundled here — they live inside the private
-//!     `echobird_core` crate and are inaccessible from this repository
-//!     or the public site.
+//!     are bundled by `echobird_core` itself (see echobird_core/assets/).
 //!
 //! Once those compile-time expansions happen here we register the
 //! bundled-asset table with `echobird_core` and call `echobird_core::run`,
