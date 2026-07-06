@@ -95,10 +95,6 @@ static BUNDLED: BundledAssets = BundledAssets {
             include_str!("../../docs/api/tools/install/cursor.json"),
         ),
         (
-            "windsurf",
-            include_str!("../../docs/api/tools/install/windsurf.json"),
-        ),
-        (
             "trae",
             include_str!("../../docs/api/tools/install/trae.json"),
         ),
