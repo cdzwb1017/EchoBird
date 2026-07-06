@@ -455,7 +455,12 @@ impl ProcessManager {
     }
 
     /// Start a CLI tool via terminal
-    fn start_cli_tool(&mut self, tool_id: &str, command: &str, cwd: Option<&str>) -> Result<(), String> {
+    fn start_cli_tool(
+        &mut self,
+        tool_id: &str,
+        command: &str,
+        cwd: Option<&str>,
+    ) -> Result<(), String> {
         let home = dirs::home_dir().unwrap_or_default();
         // Working directory for the spawned terminal: the folder the user
         // picked in the frontend launch dialog (threaded through start_tool),

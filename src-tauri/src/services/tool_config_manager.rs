@@ -2416,7 +2416,10 @@ fn apply_claudecode(model_info: &ModelInfo) -> ApplyResult {
             // equally safe. Bridge mode is immune either way (the proxy
             // recomposes the path), but this keeps both modes consistent.
             let u = u.trim_end_matches('/');
-            u.strip_suffix("/v1").unwrap_or(u).trim_end_matches('/').to_string()
+            u.strip_suffix("/v1")
+                .unwrap_or(u)
+                .trim_end_matches('/')
+                .to_string()
         });
     let anthropic_url = match anthropic_url {
         Some(u) => u,
@@ -3644,7 +3647,7 @@ fn apply_kimicode(model_info: &ModelInfo) -> ApplyResult {
 
     // [models.echobird] — max_context_size is required (≥1); default 262144.
     content = toml_write_table_value(&content, &models_table, "provider", provider);
-    content = toml_write_table_value(&content, &models_table, "model", &model_id);
+    content = toml_write_table_value(&content, &models_table, "model", model_id);
     content = toml_write_table_value_raw(&content, &models_table, "max_context_size", "262144");
 
     if let Err(e) = fs::write(&config_path, &content) {
@@ -3672,7 +3675,7 @@ fn apply_kimicode(model_info: &ModelInfo) -> ApplyResult {
 }
 
 fn read_kimicode() -> Option<ModelInfo> {
-    let content = fs::read_to_string(&kimicode_config_path()).ok()?;
+    let content = fs::read_to_string(kimicode_config_path()).ok()?;
     if content.trim().is_empty() {
         return None;
     }
@@ -4257,7 +4260,10 @@ mod tests {
 
     #[test]
     fn claudecode_env_model_id_leaves_haiku_and_subagent_bare_even_when_opt_in() {
-        for var in ["ANTHROPIC_DEFAULT_HAIKU_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL"] {
+        for var in [
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "CLAUDE_CODE_SUBAGENT_MODEL",
+        ] {
             assert_eq!(
                 claudecode_env_model_id("mimo-v2.5-pro", var, true),
                 "mimo-v2.5-pro",
