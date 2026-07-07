@@ -17,7 +17,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 export function MotherAgentProvider({ children }: { children: React.ReactNode }) {
   // From stores (replaces drilled props)
   const { detectedTools: _detectedTools } = useToolsStore();
-  const { activePage, motherPrefill: initialMessage } = useNavigationStore();
+  const { activePage, motherPrefill: initialMessage, clearMotherPrefill } = useNavigationStore();
   const onAgentRunningChange = useNavigationStore((s) => s.setAgentRunning);
   const { t: _t, locale } = useI18n(); // locale for agent hint; t for error messages
   const [models, setModels] = useState<ModelConfig[]>([]);
@@ -66,15 +66,23 @@ export function MotherAgentProvider({ children }: { children: React.ReactNode })
   const [chatCursorPos, setChatCursorPos] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null!);
   const chatInputRef = useRef<HTMLTextAreaElement>(null!);
+  // Holds the prefill-focus timer so it survives the re-render that
+  // clearMotherPrefill() triggers mid-effect — an effect cleanup would
+  // tear it down before it fires, dropping the input focus.
+  const prefillFocusRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!initialMessage || activePage !== 'mother') return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setChatInput(initialMessage);
-    const id = setTimeout(() => chatInputRef.current?.focus(), 100);
-    return () => clearTimeout(id);
-  }, [activePage, initialMessage]);
+    // One-shot: consume the prefill so it doesn't linger in the store and
+    // re-fire this effect on every later switch back to the Mother page —
+    // which would re-fill "安装XX" into an input the user already cleared.
+    clearMotherPrefill();
+    if (prefillFocusRef.current) clearTimeout(prefillFocusRef.current);
+    prefillFocusRef.current = setTimeout(() => chatInputRef.current?.focus(), 100);
+  }, [activePage, initialMessage, clearMotherPrefill]);
 
   // SSH servers shared state (persisted via backend)
   const [sshServers, setSSHServers] = useState<
