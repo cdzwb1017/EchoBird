@@ -1747,7 +1747,8 @@ pub async fn scan_tools() -> Vec<DetectedTool> {
 #[cfg(test)]
 mod tests {
     use super::{
-        has_authoritative_detector, is_windows_exe, merge_override_seed, registry_display_name_matches,
+        has_authoritative_detector, is_windows_exe, merge_override_seed,
+        registry_display_name_matches,
     };
     use crate::models::tool::PathsConfig;
 
