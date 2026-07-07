@@ -585,6 +585,20 @@ fn registry_display_name_matches(
         .any(|p| dn_lower == p || dn_lower.starts_with(&format!("{p} ")))
 }
 
+/// Returns true when `path` has a Windows executable extension (`.exe`).
+/// Registry `DisplayIcon` values can point at standalone `.ico` files (or
+/// `.dll` icon resources); passing a non-executable to Start-Process opens
+/// it with the default image viewer instead of launching the app, so we
+/// gate on this before trusting a registry-discovered path.
+#[cfg(windows)]
+fn is_windows_exe(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.eq_ignore_ascii_case("exe"))
+        .unwrap_or(false)
+}
+
 #[cfg(windows)]
 fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
     if hints.windows_display_names.is_empty() && hints.windows_display_name_prefixes.is_empty() {
@@ -657,12 +671,23 @@ fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
                 let icon_path = icon.split(',').next().unwrap_or(&icon).trim();
                 let unquoted = icon_path.trim_matches('"');
                 if !unquoted.is_empty() && Path::new(unquoted).exists() {
+                    // Reject non-executable targets (standalone .ico files,
+                    // .dll icon resources). Start-Process on one would open
+                    // it with the default image viewer instead of launching
+                    // the app — fall through to InstallLocation below instead.
+                    if is_windows_exe(unquoted) {
+                        log::info!(
+                            "[InstallHints] Registry hit (DisplayIcon): {} → {}",
+                            display_name,
+                            unquoted
+                        );
+                        return Some(unquoted.to_string());
+                    }
                     log::info!(
-                        "[InstallHints] Registry hit (DisplayIcon): {} → {}",
+                        "[InstallHints] DisplayIcon is not an exe, skipping: {} → {}",
                         display_name,
                         unquoted
                     );
-                    return Some(unquoted.to_string());
                 }
             }
             // Fallback: InstallLocation is a directory; we return it as-is.
@@ -1454,6 +1479,21 @@ pub fn get_tool_exe_path(tool_id: &str) -> Option<String> {
     let hit = scan_install_hints(&def.paths_config)?;
     let hit_path = std::path::Path::new(&hit);
     if hit_path.is_file() {
+        // Defense-in-depth: scan_windows_registry already gates on .exe, but
+        // reject any non-executable file here too so a future regression in
+        // the registry path can't slip a .ico/.dll through to Start-Process
+        // (which would open it with the default image viewer, not launch it).
+        #[cfg(windows)]
+        {
+            if !is_windows_exe(&hit) {
+                log::warn!(
+                    "[InstallHints] Skipping non-exe path for {}: {}",
+                    tool_id,
+                    hit
+                );
+                return None;
+            }
+        }
         return Some(hit);
     }
     if hit_path.is_dir() {
@@ -1706,7 +1746,9 @@ pub async fn scan_tools() -> Vec<DetectedTool> {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_authoritative_detector, merge_override_seed, registry_display_name_matches};
+    use super::{
+        has_authoritative_detector, is_windows_exe, merge_override_seed, registry_display_name_matches,
+    };
     use crate::models::tool::PathsConfig;
 
     #[cfg(windows)]
@@ -1951,5 +1993,20 @@ mod tests {
             &override_seed()
         )
         .is_none());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn is_windows_exe_recognizes_exe_and_rejects_non_executables() {
+        // Exe — case-insensitive on the extension.
+        assert!(is_windows_exe("C:\\Program Files\\ZCode\\ZCode.exe"));
+        assert!(is_windows_exe("C:\\Program Files\\ZCode\\ZCode.EXE"));
+        // Non-executables the registry can serve as DisplayIcon — the exact
+        // regression we guard against (Start-Process would open these with
+        // the default image viewer instead of launching the app).
+        assert!(!is_windows_exe("C:\\Program Files\\ZCode\\zcode.ico"));
+        assert!(!is_windows_exe("C:\\Program Files\\ZCode\\resources.dll"));
+        // No extension at all.
+        assert!(!is_windows_exe("C:\\Program Files\\ZCode\\zcode"));
     }
 }

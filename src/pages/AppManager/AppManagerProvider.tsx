@@ -218,6 +218,7 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
     opencode: null,
     codex: null,
     hermes: null,
+    zcode: null,
   });
 
   // Set tool model (single selection) - UI state update
