@@ -1673,7 +1673,10 @@ async fn scan_single_tool(def: ToolDefinition) -> DetectedTool {
             Some(normalize_for_display(def.tool_dir.clone()))
         }
     } else {
-        installed_path
+        // PATH-discovered CLI tools (e.g. `which coffee-cli` under Git Bash)
+        // return forward-slash paths. Normalize so the card shows `\` on
+        // Windows — same treatment the always_installed branch already gets.
+        installed_path.map(normalize_for_display)
     };
 
     DetectedTool {
