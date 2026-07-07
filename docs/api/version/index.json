@@ -1,6 +1,6 @@
 {
-  "version": "5.4.4",
-  "releaseDate": "2026-07-06",
+  "version": "5.4.5",
+  "releaseDate": "2026-07-07",
   "releaseNotes": "## 修复\n\n- 强化 Kimi Code 切换模型和启动规则（v5.4.3 引入的回归）\n\n## 开源\n\n- EchoBird 全开源（前后端），协议调整为 MIT，项目地址：github.com/edison7009/EchoBird，主要应对即将到来的 Claude 全面限制",
   "releaseNotesI18n": {
     "zh-cn": "## 修复\n\n- 强化 Kimi Code 切换模型和启动规则（v5.4.3 引入的回归）\n\n## 开源\n\n- EchoBird 全开源（前后端），协议调整为 MIT，项目地址：github.com/edison7009/EchoBird，主要应对即将到来的 Claude 全面限制",
