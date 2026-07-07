@@ -1746,10 +1746,12 @@ pub async fn scan_tools() -> Vec<DetectedTool> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        has_authoritative_detector, is_windows_exe, merge_override_seed,
-        registry_display_name_matches,
-    };
+    use super::{has_authoritative_detector, merge_override_seed, registry_display_name_matches};
+    // is_windows_exe is #[cfg(windows)]-gated, so the import must be too —
+    // otherwise the Linux CI build fails with an unresolved import even
+    // though the only test using it is also #[cfg(windows)].
+    #[cfg(windows)]
+    use super::is_windows_exe;
     use crate::models::tool::PathsConfig;
 
     #[cfg(windows)]
