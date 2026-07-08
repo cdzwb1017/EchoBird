@@ -256,7 +256,7 @@
       "region": "global"
     },
     {
-      "name": "CompShare 优云智算",
+      "name": "UCloud 优云智算",
       "url": "https://console.compshare.cn/light-gpu/model-subscription",
       "baseUrl": "https://cp.compshare.cn/v1",
       "anthropicUrl": "https://cp.compshare.cn",
