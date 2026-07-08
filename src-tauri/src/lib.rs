@@ -518,6 +518,15 @@ fn kill_stale_llama_server() {
 /// so [`rebuild_tray_menu`] can repaint the tray after locale changes.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Hydrate the process PATH from the Windows registry (HKLM + HKCU
+    // `Path`) before anything resolves executables — the Windows analog of
+    // the Unix login-shell PATH sourcing in `utils::platform::shell_command_path`.
+    // Append-only + existence-gated; no-op when the inherited PATH is already
+    // complete. Must run single-threaded, before the Tauri runtime spawns.
+    // See `services/windows_path.rs`.
+    #[cfg(windows)]
+    crate::services::windows_path::hydrate();
+
     let context = tauri::generate_context!();
     let tray_icon_bytes: &'static [u8] = include_bytes!("../icons/tray-icon.png");
     services::bundled_assets::register(&BUNDLED);
