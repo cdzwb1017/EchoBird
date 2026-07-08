@@ -606,6 +606,13 @@ fn is_windows_exe(path: &str) -> bool {
 /// prefix match with a word boundary (space/dash/dot/underscore after the
 /// prefix) so "zcode" / "zcode-beta" match prefix "zcode" but "zcodeextra"
 /// does not. Pure string logic — unit-testable on every platform.
+//
+// Only `#[cfg(windows)]` call sites (find_name_matching_exe / scan_windows_registry)
+// reference this, so on non-Windows CI the compiler flags it dead — relax
+// dead_code there so the cross-platform unit tests (which do call it) keep
+// building everywhere while Windows stays strict. Mirrors the cfg-gate pattern
+// on the Windows-only registry scan helpers.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn exe_stem_matches_hints(
     stem_lower: &str,
     names_lower: &[String],
@@ -628,6 +635,7 @@ fn exe_stem_matches_hints(
 /// True for exe stems that are clearly uninstallers / helpers, not the app
 /// itself. Used to reject e.g. "Uninstall ZCode.exe" when globbing an install
 /// dir whose name also begins with the tool prefix.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn is_uninstaller_stem(stem_lower: &str) -> bool {
     stem_lower.starts_with("uninstall") || stem_lower.starts_with("unins")
 }
@@ -638,6 +646,7 @@ fn is_uninstaller_stem(stem_lower: &str) -> bool {
 /// non-exe uninstallers like `winget uninstall --product-code ...` (no .exe
 /// token) so callers don't treat a winget CLI string as an install dir.
 /// Pure string parsing — no filesystem access.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn parse_uninstall_exe_path(s: &str) -> Option<String> {
     let s = s.trim();
     if s.is_empty() {
