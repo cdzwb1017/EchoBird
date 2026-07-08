@@ -119,6 +119,7 @@ const zhHant: Partial<Translations> = {
   'btn.pingAll': '測試延遲',
   'model.name': '名稱',
   'model.apiKey': 'API 金鑰',
+  'model.paste': '貼上',
   'model.modelId': '模型 ID',
   'model.modelIdPlaceholder': '搜尋或輸入模型 ID…',
   'model.openaiUrl': 'OpenAI 位址',

@@ -116,6 +116,7 @@ export type TKey =
   // Model dialog
   | 'model.name'
   | 'model.apiKey'
+  | 'model.paste'
   | 'model.modelId'
   | 'model.modelIdPlaceholder'
   | 'model.openaiUrl'

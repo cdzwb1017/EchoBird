@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager';
-import { X, Box, ExternalLink, Plus, Lock, Unlock, ClipboardCopy } from 'lucide-react';
+import { X, Box, ExternalLink, Plus, Lock, Unlock } from 'lucide-react';
 import { ModelCard, ModelCardSkeleton, getModelIcon, ModelIdCombobox } from '../../components';
 import { useI18n } from '../../hooks/useI18n';
 import * as api from '../../api/tauri';
@@ -804,8 +804,9 @@ export function AddModelModal() {
                   className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-14 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
                   readOnly={newModelForm.apiKey.startsWith('enc:v1:')}
                 />
-                {/* One-click paste from clipboard — for users who don't know
-                    Ctrl+V. Shown only while the key is editable (plaintext);
+                {/* One-click paste from clipboard — plain text affordance (no
+                    border / button styling, no hover effect, label never
+                    changes). Shown only while the key is editable (plaintext);
                     hidden once encrypted (the field is read-only then). */}
                 {newModelForm.apiKey !== 'not-needed' &&
                   !newModelForm.apiKey.startsWith('enc:v1:') && (
@@ -821,9 +822,9 @@ export function AddModelModal() {
                           /* clipboard empty / unreadable — no-op */
                         }
                       }}
-                      className="absolute right-9 top-1/2 -translate-y-1/2 text-cyber-text/70 transition-colors hover:opacity-80"
+                      className="absolute right-10 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
                     >
-                      <ClipboardCopy size={14} />
+                      {t('model.paste')}
                     </button>
                   )}
                 {newModelForm.apiKey !== 'not-needed' && (

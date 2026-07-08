@@ -110,6 +110,7 @@ const en: Translations = {
   // Model dialog
   'model.name': 'Name',
   'model.apiKey': 'API Key',
+  'model.paste': 'Paste',
   'model.modelId': 'Model ID',
   'model.modelIdPlaceholder': 'Search or enter model ID…',
   'model.openaiUrl': 'OpenAI URL',

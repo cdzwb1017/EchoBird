@@ -99,6 +99,7 @@ const zhHans: Partial<Translations> = {
   'btn.pingAll': '测试速度',
   'model.name': '名称',
   'model.apiKey': 'API 密钥',
+  'model.paste': '粘贴',
   'model.modelId': '模型 ID',
   'model.modelIdPlaceholder': '搜索或输入模型 ID…',
   'model.openaiUrl': 'OpenAI 地址',

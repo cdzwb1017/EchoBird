@@ -122,6 +122,7 @@ const ja: Partial<Translations> = {
   'btn.pingAll': '速度テスト',
   'model.name': '名前',
   'model.apiKey': 'API キー',
+  'model.paste': '貼り付け',
   'model.modelId': 'モデル ID',
   'model.modelIdPlaceholder': 'モデル ID を検索または入力…',
   'model.openaiUrl': 'OpenAI URL',
