@@ -2,6 +2,22 @@
   "$schema-comment": "Right-panel model directory. Each entry: name (display + matched against getModelIcon), url (website opened by ↗), baseUrl (OpenAI-protocol API base, prefilled into Add-Model when + is clicked), anthropicUrl (Anthropic-protocol API base — only filled if vendor natively serves /v1/messages, not via gateway adaptation), modelId (default model id; empty = leave blank in form), modelIds (optional string[]; when a vendor serves several model ids on the same endpoint, list them here — clicking the row then shows a quick-pick dropdown in the Add-Model modal, defaulting to modelId or the first listed id; the model id input stays free-editable), region ('cn' | 'global', controls locale-aware sort: zh locales surface 'cn' first, others surface 'global' first). URLs sourced from songquanpeng/one-api channeltype/url.go (2026-05) and vendor docs; some legacy URLs in one-api have been replaced with the current OpenAI-compatible v2 endpoint. Edit this file to fill in URLs / model IDs for each vendor.",
   "providers": [
     {
+      "name": "CompShare 优云智算",
+      "url": "https://console.compshare.cn/light-gpu/model-subscription",
+      "baseUrl": "https://cp.compshare.cn/v1",
+      "anthropicUrl": "https://cp.compshare.cn",
+      "modelId": "glm-5.2",
+      "modelIds": [
+        "glm-5.2",
+        "glm-5.1",
+        "MiniMax-M2.7",
+        "kimi-k2.6",
+        "deepseek-ai/DeepSeek-V3.2",
+        "deepseek-v4-flash"
+      ],
+      "region": "cn"
+    },
+    {
       "name": "Xiaomi 小米",
       "url": "https://platform.xiaomimimo.com/",
       "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",

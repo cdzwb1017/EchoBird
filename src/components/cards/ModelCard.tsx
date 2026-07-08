@@ -10,6 +10,7 @@ export const getModelIcon = (name: string, modelId?: string): string | null => {
 
   // Matching rules: keywords -> icon file
   const iconMap: [string[], string][] = [
+    [['compshare', '优云智算', '优云'], 'compshare'],
     [['qwen', '通义', 'tongyi'], 'qwen'],
     [['claude', 'anthropic', 'sonnet', 'opus', 'haiku'], 'claude'],
     [['gpt', 'openai', 'chatgpt', 'o1', 'o3'], 'chatgpt'],
@@ -45,6 +46,7 @@ export const getModelIcon = (name: string, modelId?: string): string | null => {
       if (icon === 'worldrouter') return './icons/models/worldrouter.png';
       if (icon === 'b-ai') return './icons/models/b-ai.ico';
       if (icon === 'agnes') return './icons/models/agnes.png';
+      if (icon === 'compshare') return './icons/models/compshare.png';
       return `./icons/models/${icon}.svg`;
     }
   }
