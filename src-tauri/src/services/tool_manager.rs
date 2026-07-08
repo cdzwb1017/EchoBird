@@ -599,6 +599,110 @@ fn is_windows_exe(path: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// True when an exe file stem (lowercased, no extension) corresponds to the
+/// tool's known display names / prefixes — the rule used to pick the real app
+/// exe out of an install directory that also contains uninstallers. Mirrors
+/// `registry_display_name_matches` but for file stems: exact name match, or a
+/// prefix match with a word boundary (space/dash/dot/underscore after the
+/// prefix) so "zcode" / "zcode-beta" match prefix "zcode" but "zcodeextra"
+/// does not. Pure string logic — unit-testable on every platform.
+fn exe_stem_matches_hints(
+    stem_lower: &str,
+    names_lower: &[String],
+    prefixes_lower: &[String],
+) -> bool {
+    if names_lower.iter().any(|n| n == stem_lower) {
+        return true;
+    }
+    prefixes_lower.iter().any(|p| {
+        stem_lower == *p
+            || (stem_lower.starts_with(p)
+                && stem_lower[p.len()..]
+                    .chars()
+                    .next()
+                    .map(|c| !c.is_alphanumeric())
+                    .unwrap_or(false))
+    })
+}
+
+/// True for exe stems that are clearly uninstallers / helpers, not the app
+/// itself. Used to reject e.g. "Uninstall ZCode.exe" when globbing an install
+/// dir whose name also begins with the tool prefix.
+fn is_uninstaller_stem(stem_lower: &str) -> bool {
+    stem_lower.starts_with("uninstall") || stem_lower.starts_with("unins")
+}
+
+/// Extract the executable path from a registry `UninstallString` value.
+/// Handles quoted paths with trailing args (`"E:\ZCode\Uninstall ZCode.exe"
+/// /currentuser`) and bare paths (`C:\App\uninst.exe`). Returns None for
+/// non-exe uninstallers like `winget uninstall --product-code ...` (no .exe
+/// token) so callers don't treat a winget CLI string as an install dir.
+/// Pure string parsing — no filesystem access.
+fn parse_uninstall_exe_path(s: &str) -> Option<String> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let token = if let Some(rest) = s.strip_prefix('"') {
+        rest.split('"').next().unwrap_or("")
+    } else {
+        s.split_whitespace().next().unwrap_or("")
+    };
+    let token = token.trim();
+    if token.is_empty() {
+        return None;
+    }
+    let is_exe = Path::new(token)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("exe"))
+        .unwrap_or(false);
+    if is_exe {
+        Some(token.to_string())
+    } else {
+        None
+    }
+}
+
+/// Glob an install directory for an exe whose name matches the tool's hints,
+/// returning its full path. Used as a last-resort fallback when a registry
+/// Uninstall entry exposes the install dir (via DisplayIcon's parent or
+/// UninstallString) but neither DisplayIcon nor InstallLocation points at the
+/// real app exe directly — e.g. electron-builder NSIS installs at a custom
+/// path: DisplayIcon is a standalone `.ico`, InstallLocation is empty, and the
+/// app exe sits next to `Uninstall <Name>.exe`. Uninstallers are excluded by
+/// `is_uninstaller_stem` so we never return the uninstaller itself.
+#[cfg(windows)]
+fn find_name_matching_exe(
+    dir: &Path,
+    names_lower: &[String],
+    prefixes_lower: &[String],
+) -> Option<String> {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return None,
+    };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if !is_windows_exe(name) {
+            continue;
+        }
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_lowercase())
+            .unwrap_or_default();
+        if is_uninstaller_stem(&stem) {
+            continue;
+        }
+        if exe_stem_matches_hints(&stem, names_lower, prefixes_lower) {
+            return Some(path.to_string_lossy().to_string());
+        }
+    }
+    None
+}
+
 #[cfg(windows)]
 fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
     if hints.windows_display_names.is_empty() && hints.windows_display_name_prefixes.is_empty() {
@@ -665,6 +769,13 @@ fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
                     continue;
                 }
             }
+            // Collect install-dir candidates for the exe-glob fallback below.
+            // Populated when DisplayIcon is a non-exe file (its parent dir is
+            // still a strong install-dir signal) and/or UninstallString exposes
+            // the install dir — covers installers (electron-builder NSIS at a
+            // custom path) that leave InstallLocation empty.
+            let mut install_dir_candidates: Vec<PathBuf> = Vec::new();
+
             // DisplayIcon usually points at the main exe directly. Strip ",N" icon-index
             // suffix if present (Windows convention for selecting an icon from a multi-icon exe).
             if let Ok(icon) = entry.get_value::<String, _>("DisplayIcon") {
@@ -674,7 +785,8 @@ fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
                     // Reject non-executable targets (standalone .ico files,
                     // .dll icon resources). Start-Process on one would open
                     // it with the default image viewer instead of launching
-                    // the app — fall through to InstallLocation below instead.
+                    // the app — remember its parent dir as an install-dir
+                    // candidate, then fall through.
                     if is_windows_exe(unquoted) {
                         log::info!(
                             "[InstallHints] Registry hit (DisplayIcon): {} → {}",
@@ -683,8 +795,11 @@ fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
                         );
                         return Some(unquoted.to_string());
                     }
+                    if let Some(parent) = Path::new(unquoted).parent() {
+                        install_dir_candidates.push(parent.to_path_buf());
+                    }
                     log::info!(
-                        "[InstallHints] DisplayIcon is not an exe, skipping: {} → {}",
+                        "[InstallHints] DisplayIcon is not an exe, using its dir as install-dir candidate: {} → {}",
                         display_name,
                         unquoted
                     );
@@ -701,6 +816,31 @@ fn scan_windows_registry(hints: &InstallHints) -> Option<String> {
                         trimmed
                     );
                     return Some(trimmed.to_string());
+                }
+            }
+            // Fallback 2: installers that leave InstallLocation empty but record
+            // an UninstallString like `"E:\ZCode\Uninstall ZCode.exe" /currentuser`.
+            // The uninstaller sits next to the real app exe, so its parent dir
+            // is the install dir — glob it for a name-matching exe. This is what
+            // makes a custom-path ZCode install (E:\ZCode\ZCode.exe) detectable
+            // when DisplayIcon is a .ico and InstallLocation is blank.
+            if let Ok(uninst) = entry.get_value::<String, _>("UninstallString") {
+                if let Some(exe_path) = parse_uninstall_exe_path(&uninst) {
+                    if let Some(parent) = Path::new(&exe_path).parent() {
+                        if !install_dir_candidates.iter().any(|c| c == parent) {
+                            install_dir_candidates.push(parent.to_path_buf());
+                        }
+                    }
+                }
+            }
+            for dir in &install_dir_candidates {
+                if let Some(exe) = find_name_matching_exe(dir, &names_lower, &prefixes_lower) {
+                    log::info!(
+                        "[InstallHints] Registry hit (exe glob in install dir): {} → {}",
+                        display_name,
+                        exe
+                    );
+                    return Some(exe);
                 }
             }
         }
@@ -1749,7 +1889,10 @@ pub async fn scan_tools() -> Vec<DetectedTool> {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_authoritative_detector, merge_override_seed, registry_display_name_matches};
+    use super::{
+        exe_stem_matches_hints, has_authoritative_detector, is_uninstaller_stem,
+        merge_override_seed, parse_uninstall_exe_path, registry_display_name_matches,
+    };
     // is_windows_exe is #[cfg(windows)]-gated, so the import must be too —
     // otherwise the Linux CI build fails with an unresolved import even
     // though the only test using it is also #[cfg(windows)].
@@ -1920,6 +2063,131 @@ mod tests {
     #[test]
     fn no_hints_never_matches() {
         assert!(!registry_display_name_matches("anything 1.2.3", &[], &[]));
+    }
+
+    // ── exe-glob fallback: a registry Uninstall entry whose DisplayIcon is a
+    //    standalone .ico and whose InstallLocation is blank (electron-builder
+    //    NSIS at a custom path, e.g. ZCode at E:\ZCode) must still be detected
+    //    by deriving the install dir from DisplayIcon's parent / UninstallString
+    //    and globbing it for a name-matching exe. These test the pure-string
+    //    pieces on every platform; the dir walk itself is Windows-only. ──
+
+    #[test]
+    fn parse_uninstall_string_quoted_with_args() {
+        // ZCode's real value: `"E:\ZCode\Uninstall ZCode.exe" /currentuser`
+        let got = parse_uninstall_exe_path(r#""E:\ZCode\Uninstall ZCode.exe" /currentuser"#);
+        assert_eq!(got.as_deref(), Some(r"E:\ZCode\Uninstall ZCode.exe"));
+    }
+
+    #[test]
+    fn parse_uninstall_string_bare() {
+        let got = parse_uninstall_exe_path(r"C:\App\uninst.exe");
+        assert_eq!(got.as_deref(), Some(r"C:\App\uninst.exe"));
+    }
+
+    #[test]
+    fn parse_uninstall_string_rejects_winget_cli() {
+        // winget uninstall strings have no .exe token — must not be treated as
+        // an install dir (would otherwise resolve to a bogus path).
+        let got = parse_uninstall_exe_path(
+            "winget uninstall --product-code Anthropic.ClaudeCode_8wekyb3d8bbwe",
+        );
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn parse_uninstall_string_rejects_empty() {
+        assert!(parse_uninstall_exe_path("").is_none());
+        assert!(parse_uninstall_exe_path("   ").is_none());
+    }
+
+    #[test]
+    fn exe_stem_matches_exact_prefix() {
+        // ZCode.exe stem "zcode" vs prefix "ZCode".
+        let prefixes = v(&["zcode"]);
+        assert!(exe_stem_matches_hints("zcode", &[], &prefixes));
+    }
+
+    #[test]
+    fn exe_stem_matches_exact_name() {
+        let names = v(&["trae cn"]);
+        assert!(exe_stem_matches_hints("trae cn", &names, &[]));
+    }
+
+    #[test]
+    fn exe_stem_prefix_matches_separator_suffix() {
+        // "zcode-beta" matches prefix "zcode" (boundary after prefix).
+        let prefixes = v(&["zcode"]);
+        assert!(exe_stem_matches_hints("zcode-beta", &[], &prefixes));
+        assert!(exe_stem_matches_hints("zcode beta", &[], &prefixes));
+        assert!(exe_stem_matches_hints("zcode.beta", &[], &prefixes));
+    }
+
+    #[test]
+    fn exe_stem_prefix_rejects_no_boundary() {
+        // "zcodeextra" must NOT match prefix "zcode" — no word boundary.
+        let prefixes = v(&["zcode"]);
+        assert!(!exe_stem_matches_hints("zcodeextra", &[], &prefixes));
+    }
+
+    #[test]
+    fn uninstaller_stem_is_flagged() {
+        // "Uninstall ZCode.exe" stem must be excluded from the glob result.
+        assert!(is_uninstaller_stem("uninstall zcode"));
+        assert!(is_uninstaller_stem("unins000"));
+        assert!(!is_uninstaller_stem("zcode"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn find_name_matching_exe_picks_app_not_uninstaller() {
+        // Mimic a custom-path ZCode install dir: the real app exe sits next to
+        // an `Uninstall ZCode.exe` uninstaller and a standalone .ico. The glob
+        // must return the app exe and never the uninstaller.
+        let dir = std::env::temp_dir().join(format!("echobird_zcode_test_{}", line!()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("ZCode.exe"), b"").unwrap();
+        std::fs::write(dir.join("Uninstall ZCode.exe"), b"").unwrap();
+        std::fs::write(dir.join("uninstallerIcon.ico"), b"").unwrap();
+
+        let prefixes = v(&["zcode"]);
+        let got = super::find_name_matching_exe(&dir, &[], &prefixes);
+        assert_eq!(
+            got.as_deref().and_then(|p| {
+                let p = std::path::Path::new(p);
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string())
+            }),
+            Some("ZCode.exe".to_string())
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "machine-specific: only passes where ZCode is installed at a custom path"]
+    fn real_registry_finds_custom_path_zcode() {
+        // End-to-end: the real ZCode Uninstall entry has DisplayIcon=.ico,
+        // InstallLocation blank, UninstallString pointing at E:\ZCode. The scan
+        // must derive E:\ZCode and return E:\ZCode\ZCode.exe (or whichever
+        // name-matching exe lives there).
+        use crate::models::tool::InstallHints;
+        let hints = InstallHints {
+            windows_display_name_prefixes: v(&["ZCode"]),
+            ..Default::default()
+        };
+        let got = super::scan_windows_registry(&hints);
+        let path = got.expect("ZCode registry entry should resolve to an exe");
+        assert!(
+            super::is_windows_exe(&path),
+            "resolved path must be an exe: {path}"
+        );
+        assert!(
+            path.to_lowercase().ends_with(r"\zcode.exe"),
+            "expected ...\\ZCode.exe, got {path}"
+        );
     }
 
     // ── tool-paths.json self-heal: a file seeded before a tool shipped (e.g.
