@@ -9,6 +9,7 @@ import { ModelCard, ModelCardSkeleton, getModelIcon, ModelIdCombobox } from '../
 import { useI18n } from '../../hooks/useI18n';
 import * as api from '../../api/tauri';
 import type { ModelConfig } from '../../api/types';
+import { normalizeAnthropicUrl, normalizeOpenaiUrl } from '../../utils/normalizeUrl';
 import { ModelNexusContext, useModelNexus } from './context';
 import type { NewModelForm } from './context';
 import modelDirectory from '../../data/modelDirectory.json';
@@ -691,6 +692,32 @@ export function AddModelModal() {
 
   if (!showAddModelModal) return null;
 
+  // One-click paste affordance for the modal's free-text fields. Plain text,
+  // no button styling / hover effect — the label never changes. The `normalize`
+  // arg lets a URL field run the pasted text through the SAME normalization the
+  // typing path uses, so a pasted full endpoint (`/v1/chat/completions`) is
+  // trimmed to a clean base instead of silently keeping a doubled path that
+  // would 404 every request while manually typed URLs work.
+  const pasteButton = (field: 'baseUrl' | 'anthropicUrl', normalize: (v: string) => string) => (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          const text = (await readClipboardText()).trim();
+          if (text) {
+            const v = normalize(text);
+            setNewModelForm((prev) => ({ ...prev, [field]: v }));
+          }
+        } catch {
+          /* clipboard empty / unreadable — no-op */
+        }
+      }}
+      className="absolute right-10 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
+    >
+      {t('model.paste')}
+    </button>
+  );
+
   return (
     <div
       className={`fixed inset-0 z-[9998] flex items-center justify-center transition-all duration-200 ${modelModalAnimatingOut ? 'opacity-0' : 'opacity-100'}`}
@@ -743,35 +770,41 @@ export function AddModelModal() {
               <label className="block text-xs text-cyber-text-secondary mb-1">
                 {t('model.openaiUrl')}
               </label>
-              <input
-                type="text"
-                placeholder="https://x.x.com/v1"
-                value={newModelForm.baseUrl}
-                onChange={(e) => {
-                  let v = e.target.value;
-                  v = v
-                    .replace(/\/chat\/completions\/?$/i, '')
-                    .replace(/\/v1\/chat\/completions\/?$/i, '/v1');
-                  setNewModelForm((prev) => ({ ...prev, baseUrl: v }));
-                }}
-                className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="https://x.x.com/v1"
+                  value={newModelForm.baseUrl}
+                  onChange={(e) =>
+                    setNewModelForm((prev) => ({
+                      ...prev,
+                      baseUrl: normalizeOpenaiUrl(e.target.value),
+                    }))
+                  }
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-14 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                />
+                {pasteButton('baseUrl', normalizeOpenaiUrl)}
+              </div>
             </div>
             <div>
               <label className="block text-xs text-cyber-text-secondary mb-1">
                 {t('model.anthropicUrl')}
               </label>
-              <input
-                type="text"
-                placeholder="https://x.x.com/anthropic"
-                value={newModelForm.anthropicUrl}
-                onChange={(e) => {
-                  let v = e.target.value;
-                  v = v.replace(/\/v1\/messages\/?$/i, '').replace(/\/messages\/?$/i, '');
-                  setNewModelForm((prev) => ({ ...prev, anthropicUrl: v }));
-                }}
-                className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="https://x.x.com/anthropic"
+                  value={newModelForm.anthropicUrl}
+                  onChange={(e) =>
+                    setNewModelForm((prev) => ({
+                      ...prev,
+                      anthropicUrl: normalizeAnthropicUrl(e.target.value),
+                    }))
+                  }
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-14 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                />
+                {pasteButton('anthropicUrl', normalizeAnthropicUrl)}
+              </div>
             </div>
             <div>
               <label className="block text-xs text-cyber-text-secondary mb-1">
@@ -785,6 +818,15 @@ export function AddModelModal() {
                 onChange={(v) => setNewModelForm((prev) => ({ ...prev, modelId: v }))}
                 options={newModelForm.modelIdOptions}
                 placeholder={t('model.modelIdPlaceholder')}
+                onPaste={async () => {
+                  try {
+                    const text = (await readClipboardText()).trim();
+                    if (text) setNewModelForm((prev) => ({ ...prev, modelId: text }));
+                  } catch {
+                    /* clipboard empty / unreadable — no-op */
+                  }
+                }}
+                pasteLabel={t('model.paste')}
               />
             </div>
             <div>

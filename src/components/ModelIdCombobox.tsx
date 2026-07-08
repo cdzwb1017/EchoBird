@@ -8,6 +8,14 @@ interface ModelIdComboboxProps {
   /** Suggestion list. Empty/absent → behaves as a plain text input (no dropdown). */
   options?: string[];
   placeholder?: string;
+  /** Optional one-click paste affordance. When provided, a plain-text "paste"
+   *  control (no styling/hover) renders inside the field and calls `onPaste` on
+   *  click — the caller owns the clipboard read + value write. `pasteLabel` is
+   *  the localized button text (caller passes its i18n string) so this generic
+   *  combobox stays free of the app's i18n hook. Mirrors the paste controls on
+   *  the other Model-Nexus inputs (API key / URLs). */
+  onPaste?: () => void;
+  pasteLabel?: string;
 }
 
 type MenuPos = {
@@ -34,6 +42,8 @@ export function ModelIdCombobox({
   onChange,
   options = [],
   placeholder,
+  onPaste,
+  pasteLabel,
 }: ModelIdComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -161,7 +171,10 @@ export function ModelIdCombobox({
           if (hasOptions) setIsOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        className={`w-full bg-cyber-input border border-cyber-border ${hasOptions ? 'pr-8' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
+        // Reserve right padding for the controls that overlay the field: the
+        // paste affordance (pr-14, clears the "paste" text at right-9) takes
+        // precedence over the chevron (pr-8) since it sits further out.
+        className={`w-full bg-cyber-input border border-cyber-border ${onPaste ? 'pr-14' : hasOptions ? 'pr-8' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
       />
       {hasOptions && (
         <button
@@ -176,6 +189,16 @@ export function ModelIdCombobox({
           className="absolute right-1.5 top-1/2 -translate-y-1/2 text-cyber-text-muted hover:text-cyber-text"
         >
           <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+      {onPaste && pasteLabel && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={onPaste}
+          className="absolute right-9 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
+        >
+          {pasteLabel}
         </button>
       )}
       {showList &&
