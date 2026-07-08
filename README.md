@@ -43,13 +43,22 @@
       Thanks to <strong>Volcengine</strong> for sponsoring EchoBird! Volcengine is ByteDance's cloud platform, and its Ark Agent Plan is built for <strong>AI Coding</strong> to supercharge your dev workflow — 20,000 agent fuel credits per month plus a curated set of popular coding models. Sign up via <a href="https://www.volcengine.com/activity/ai618?utm_campaign=hw&utm_content=hw&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=EchoBird1">this link</a>: <strong>just ¥9.9 for your first month</strong> as a new user.
     </td>
   </tr>
+  <tr>
+    <td width="150" align="center">
+      <a href="https://passport.compshare.cn/register?referral_code=LlOJAWughXiDXtP9v1Srra"><img src="public/icons/sponsors/compshare.png" width="92" alt="优云智算 CompShare" /></a>
+    </td>
+    <td>
+      <a href="https://passport.compshare.cn/register?referral_code=LlOJAWughXiDXtP9v1Srra"><strong>优云智算 CompShare</strong></a><br/>
+      Thanks to <strong>CompShare (优云智算)</strong> for sponsoring EchoBird! CompShare is UCloud's AI cloud platform, offering stable, comprehensive access to domestic and overseas model APIs through a single API key. Its flagship Coding Plan (monthly or pay-per-call) delivers great value and supports GLM5.2, alongside officially-proxied stable overseas models. Plug it into Claude Code, Codex, or call the API directly — with enterprise-grade concurrency, 24/7 support, and self-service invoicing. Sign up via <a href="https://passport.compshare.cn/register?referral_code=LlOJAWughXiDXtP9v1Srra">this link</a> to get a <strong>¥5 free platform credit</strong>!
+    </td>
+  </tr>
 </table>
 
 ---
 
 ## What is EchoBird?
 
-Friends kept asking me to install **Claude Code**, **OpenClaw**, **Hermes Agent**… every machine was different, and some refused to pay for an LLM. Setup and explanations took forever. So I built **EchoBird** — an Agent inspired by **Songbird**, the genius netrunner from *Cyberpunk 2077* who solves any tech problem for V…
+Friends kept asking me to install **Claude Code**, **OpenClaw**, **Hermes Agent**… every machine was different, and some refused to pay for an LLM. Setup and explanations took forever. So I built **EchoBird** — an Agent inspired by **Songbird**, the genius netrunner from _Cyberpunk 2077_ who solves any tech problem for V…
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/162f0428-a44d-4e83-9e10-c6b580ef0120" alt="EchoBird — My AI Career dashboard" width="820" />
@@ -139,14 +148,14 @@ The script auto-detects your OS, downloads the right package, and skips if you'r
 
 Latest release → <https://github.com/edison7009/EchoBird/releases/latest>
 
-| Platform | Asset |
-|---|---|
-| Windows x64 | `EchoBird_<ver>_Windows_x64-setup.exe` |
-| macOS (Apple Silicon) | `EchoBird_<ver>_macOS_arm64.dmg` |
-| Linux x64 · Debian/Ubuntu | `EchoBird_<ver>_Linux_x64.deb` |
-| Linux arm64 · Debian/Ubuntu | `EchoBird_<ver>_Linux_arm64.deb` |
-| Linux x64 · Fedora/RHEL | `EchoBird_<ver>_Linux_x64.rpm` |
-| Linux arm64 · Fedora/RHEL | `EchoBird_<ver>_Linux_arm64.rpm` |
+| Platform                    | Asset                                  |
+| --------------------------- | -------------------------------------- |
+| Windows x64                 | `EchoBird_<ver>_Windows_x64-setup.exe` |
+| macOS (Apple Silicon)       | `EchoBird_<ver>_macOS_arm64.dmg`       |
+| Linux x64 · Debian/Ubuntu   | `EchoBird_<ver>_Linux_x64.deb`         |
+| Linux arm64 · Debian/Ubuntu | `EchoBird_<ver>_Linux_arm64.deb`       |
+| Linux x64 · Fedora/RHEL     | `EchoBird_<ver>_Linux_x64.rpm`         |
+| Linux arm64 · Fedora/RHEL   | `EchoBird_<ver>_Linux_arm64.rpm`       |
 
 ## License & Trademarks
 
@@ -161,8 +170,8 @@ See [NOTICE](NOTICE) for attribution.
 dress**: the specific combination of four user-facing surfaces sharing one
 central model hub, plus the bundling of two complete reference applications
 (Reversi + AI Translator) as user tutorial templates. The wordmark **EchoBird**
-is a common-law trademark of edison7009; feature labels like *Model Nexus* /
-*模型中心* are descriptive and protected only as part of the trade dress.
+is a common-law trademark of edison7009; feature labels like _Model Nexus_ /
+_模型中心_ are descriptive and protected only as part of the trade dress.
 **Forks are welcome — no need to scrub our name and logo.** If your fork
 honestly credits EchoBird as upstream, you may keep our identity visible
 (e.g. "EchoBird Community Edition by X"). If you prefer to rebrand entirely,

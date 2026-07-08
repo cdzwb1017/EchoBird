@@ -41,6 +41,15 @@
       感谢 <strong>火山引擎</strong> 赞助本项目!火山引擎是字节跳动旗下的云服务平台,方舟 Agent Plan 主打 <strong>AI Coding</strong>,极大提升开发效率 —— 每月 20,000 Agent 燃料值,集合主流热门编程模型。通过<a href="https://www.volcengine.com/activity/ai618?utm_campaign=hw&utm_content=hw&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=EchoBird1">专属链接</a>注册,<strong>新客首单首月仅 ¥9.9</strong>。
     </td>
   </tr>
+  <tr>
+    <td width="150" align="center">
+      <a href="https://passport.compshare.cn/register?referral_code=LlOJAWughXiDXtP9v1Srra"><img src="public/icons/sponsors/compshare.png" width="92" alt="优云智算 CompShare" /></a>
+    </td>
+    <td>
+      <a href="https://passport.compshare.cn/register?referral_code=LlOJAWughXiDXtP9v1Srra"><strong>优云智算 CompShare</strong></a><br/>
+      感谢 <strong>优云智算</strong> 赞助了本项目!优云智算是 UCloud 旗下 AI 云平台,提供稳定、全面的国内外模型 API,仅一个 key 即可调用。主打包月、按次的高性价比国模 Coding Plan 套餐,支持 GLM5.2;同时提供官转稳定海外模型。支持接入 Claude Code、Codex 及 API 调用,支持企业高并发、7×24 技术支持、自助开票。通过<a href="https://passport.compshare.cn/register?referral_code=LlOJAWughXiDXtP9v1Srra">此链接</a>注册的用户,可得<strong>免费 5 元平台体验金</strong>!
+    </td>
+  </tr>
 </table>
 
 ---
@@ -137,14 +146,14 @@ curl -fsSL https://echobird.ai/install.sh | sh
 
 最新版本 → <https://github.com/edison7009/EchoBird/releases/latest>
 
-| 平台 | 安装包 |
-|---|---|
-| Windows x64 | `EchoBird_<ver>_Windows_x64-setup.exe` |
-| macOS(Apple Silicon) | `EchoBird_<ver>_macOS_arm64.dmg` |
-| Linux x64 · Debian/Ubuntu | `EchoBird_<ver>_Linux_x64.deb` |
-| Linux arm64 · Debian/Ubuntu | `EchoBird_<ver>_Linux_arm64.deb` |
-| Linux x64 · Fedora/RHEL | `EchoBird_<ver>_Linux_x64.rpm` |
-| Linux arm64 · Fedora/RHEL | `EchoBird_<ver>_Linux_arm64.rpm` |
+| 平台                        | 安装包                                 |
+| --------------------------- | -------------------------------------- |
+| Windows x64                 | `EchoBird_<ver>_Windows_x64-setup.exe` |
+| macOS(Apple Silicon)        | `EchoBird_<ver>_macOS_arm64.dmg`       |
+| Linux x64 · Debian/Ubuntu   | `EchoBird_<ver>_Linux_x64.deb`         |
+| Linux arm64 · Debian/Ubuntu | `EchoBird_<ver>_Linux_arm64.deb`       |
+| Linux x64 · Fedora/RHEL     | `EchoBird_<ver>_Linux_x64.rpm`         |
+| Linux arm64 · Fedora/RHEL   | `EchoBird_<ver>_Linux_arm64.rpm`       |
 
 ## 协议与商标
 
@@ -157,7 +166,7 @@ AGPL-3.0-or-later 协议下(已发布的 v4.x 二进制不溯及改约)。署名
 **商业外观 + 品牌** —— EchoBird 的主防线是 **UI / UX 商业外观(trade dress)**:
 四个用户面向界面共享同一个中央模型枢纽的具体组合,以及内置两个完整可运行的
 参考应用(黑白棋 + AI 翻译)作为用户教程模板。**EchoBird** 是 edison7009 的
-单一普通法文字商标;*Model Nexus / 模型中心* 等功能名是描述性标签,**不单独
+单一普通法文字商标;_Model Nexus / 模型中心_ 等功能名是描述性标签,**不单独
 主张为商标**,只作为 trade dress 的一部分受保护。**Fork 欢迎 —— 无需抹掉我们
 的名字和 Logo**。如果你的 fork 在 README / About 页面 / 产品页诚实标注 EchoBird
 为上游,可以保留我们的身份可见(例:"EchoBird 社区版 by X");完全重新品牌化
