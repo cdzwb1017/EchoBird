@@ -24,7 +24,7 @@
 use std::collections::HashSet;
 
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ};
-use winreg::{HKEY, RegKey};
+use winreg::{RegKey, HKEY};
 
 use crate::services::tool_manager::expand_path;
 
@@ -198,7 +198,8 @@ mod tests {
         let dirs = real_path_dirs();
         assert!(!dirs.is_empty(), "registry PATH read returned nothing");
         assert!(
-            dirs.iter().any(|d| d.to_ascii_lowercase().contains("\\windows")),
+            dirs.iter()
+                .any(|d| d.to_ascii_lowercase().contains("\\windows")),
             "system PATH missing C:\\Windows — subkey path likely wrong"
         );
         // REG_EXPAND_SZ entries (e.g. %USERPROFILE%\...) must be expanded —
