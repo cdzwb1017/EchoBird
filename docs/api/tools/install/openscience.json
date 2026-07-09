@@ -1,0 +1,40 @@
+{
+    "id": "openscience",
+    "displayName": "OpenScience",
+    "homepage": "https://www.openscience.sh/",
+    "docs": "https://www.openscience.sh/docs",
+    "kind": "cli",
+    "platforms": ["macos", "linux", "windows"],
+    "install": {
+        "npm_global": "npm install -g @synsci/openscience",
+        "npx": "npx synsci",
+        "curl_bash": "curl -fsSL https://openscience.sh/install | bash",
+        "macos_download_arm": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-darwin-arm64.zip",
+        "macos_download_x64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-darwin-x64.zip",
+        "linux_download_x64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-linux-x64.tar.gz",
+        "linux_download_arm64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-linux-arm64.tar.gz",
+        "windows_download_x64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-windows-x64.zip",
+        "note": "OpenScience is an open-source, model-agnostic AI research workbench (open-source Claude Science alternative). It runs a local server and opens a workspace UI in the browser. Install via npm (preferred, cross-platform), the curl install script (macOS/Linux), or a platform binary from GitHub Releases. EchoBird does not manage models or login for it — OpenScience takes any provider key (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.) via env var or `openscience keys add`, and runs a first-run onboarding that is auto-skipped when launched without a TTY."
+    },
+    "install_flow": {
+        "summary": "Install the `openscience` binary onto PATH (npm global, curl script, or GitHub release archive), then launch with `openscience serve` to start the local backend.",
+        "agent_steps": [
+            "Detect OS and architecture. OpenScience ships native binaries for macOS (arm64/x64), Linux (x64/arm64), and Windows (x64).",
+            "Preferred path (all platforms): if npm is available, run `npm install -g @synsci/openscience` — this puts `openscience` on PATH and is the simplest cross-platform install. Verify with `openscience --version`.",
+            "macOS / Linux without npm: run `curl -fsSL https://openscience.sh/install | bash`. The script detects OS/arch, downloads the platform archive, extracts to ~/.openscience/bin, and modifies shell rc files (.zshrc / .bashrc) to add that dir to PATH. Tell the user to open a NEW terminal afterwards so PATH reloads.",
+            "Windows without npm: download https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-windows-x64.zip, extract openscience.exe to %USERPROFILE%\\.openscience\\bin, and add that directory to the user PATH. Verify with `openscience --version` in a new terminal.",
+            "After install, tell the user to launch with `openscience serve` in a terminal — it starts the local backend and prints the workspace URL (e.g. `openscience server listening on http://localhost:xxxxx`). The user opens that URL in their browser themselves. `serve` is headless and does NOT auto-open a browser; bare `openscience` (the `web` command) WOULD auto-open one, so use `serve` when launched from EchoBird.",
+            "OpenScience needs a model to do work. The user can export a provider key (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.) in the terminal before launching, run `openscience keys add`, or use the free demo models / Atlas managed models. EchoBird does not switch models for OpenScience — it uses the user's own keys."
+        ],
+        "tell_user": [
+            "Which install method was used (npm global, curl script, or manual binary)",
+            "That `openscience` is now on PATH (may need a NEW terminal to take effect)",
+            "How to launch: `openscience serve` in a terminal (headless — prints the workspace URL, does not auto-open a browser)",
+            "To power models: set a provider key env var (e.g. ANTHROPIC_API_KEY) or run `openscience keys add`"
+        ]
+    },
+    "network_requirements": {
+        "test_urls": ["https://openscience.sh", "https://github.com/synthetic-sciences/OpenScience"],
+        "mirrors": {}
+    }
+}

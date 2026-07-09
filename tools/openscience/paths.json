@@ -1,0 +1,31 @@
+{
+    "name": "OpenScience",
+    "category": "Science",
+    "noModelConfig": true,
+    "apiProtocol": [
+        "anthropic"
+    ],
+    "docs": "https://www.openscience.sh/docs",
+    "website": "https://www.openscience.sh/",
+    "command": "",
+    "startCommand": "openscience serve",
+    "configDir": "~/.config/openscience",
+    "configFile": "~/.config/openscience/openscience.json",
+    "requireConfigFile": false,
+    "paths": {
+        "win32": [
+            "~/.openscience/bin/openscience.exe"
+        ],
+        "darwin": [
+            "~/.openscience/bin/openscience",
+            "/usr/local/bin/openscience"
+        ],
+        "linux": [
+            "~/.openscience/bin/openscience",
+            "~/.local/bin/openscience",
+            "/usr/local/bin/openscience",
+            "/usr/bin/openscience"
+        ]
+    },
+    "installHints": {}
+}

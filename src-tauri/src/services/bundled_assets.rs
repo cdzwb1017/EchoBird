@@ -154,6 +154,7 @@ pub const INSTALLABLE_TOOL_IDS: &[&str] = &[
     "opencodedesktop",
     "coffeecli",
     "claudescience",
+    "openscience",
     "vscode",
     "cursor",
     "trae",

@@ -103,6 +103,10 @@ static BUNDLED: BundledAssets = BundledAssets {
             include_str!("../../docs/api/tools/install/claudescience.json"),
         ),
         (
+            "openscience",
+            include_str!("../../docs/api/tools/install/openscience.json"),
+        ),
+        (
             "vscode",
             include_str!("../../docs/api/tools/install/vscode.json"),
         ),
