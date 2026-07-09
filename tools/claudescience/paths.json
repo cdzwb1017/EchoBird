@@ -1,9 +1,5 @@
 {
     "name": "Claude Science",
-    "names": {
-        "zh-Hans": "Claude 科学",
-        "zh-Hant": "Claude 科學"
-    },
     "category": "Science",
     "noModelConfig": true,
     "apiProtocol": [
