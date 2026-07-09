@@ -171,12 +171,12 @@ export function ModelIdCombobox({
           if (hasOptions) setIsOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        // Reserve right padding for the controls that overlay the field. The
-        // chevron sits flush right (right-1.5, ~14px) and the paste label sits
-        // just to its left (right-8); together they need ~pr-16 so the typed
-        // value never slides under either. When only the chevron is present
-        // (no paste affordance) the smaller pr-8 suffices.
-        className={`w-full bg-cyber-input border border-cyber-border ${onPaste ? 'pr-16' : hasOptions ? 'pr-8' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
+        // The chevron and the paste affordance are mutually exclusive: when
+        // the directory carries model-id options the field is a picker (chevron
+        // flush-right at right-1.5, pr-8), so the user selects from the menu;
+        // when there are no options it's a plain free-text input and the paste
+        // label shows flush-right at right-2 (pr-12) instead.
+        className={`w-full bg-cyber-input border border-cyber-border ${hasOptions ? 'pr-8' : onPaste ? 'pr-12' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
       />
       {hasOptions && (
         <button
@@ -193,12 +193,12 @@ export function ModelIdCombobox({
           <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
       )}
-      {onPaste && pasteLabel && (
+      {onPaste && pasteLabel && !hasOptions && (
         <button
           type="button"
           tabIndex={-1}
           onClick={onPaste}
-          className="absolute right-8 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
+          className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
         >
           {pasteLabel}
         </button>
