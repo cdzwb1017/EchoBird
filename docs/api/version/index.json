@@ -1,11 +1,11 @@
 {
   "version": "5.4.5",
-  "releaseDate": "2026-07-07",
-  "releaseNotes": "## 修复\n\n- 强化 Kimi Code 切换模型和启动规则（v5.4.3 引入的回归）\n\n## 开源\n\n- EchoBird 全开源（前后端），协议调整为 MIT，项目地址：github.com/edison7009/EchoBird，主要应对即将到来的 Claude 全面限制",
+  "releaseDate": "2026-07-09",
+  "releaseNotes": "## 修复\n\n- 修复 ZCode 等安装到非默认盘符（如 `E:\\ZCode`）时无法扫描检测的问题\n\n## 体验\n\n- 编辑模型配置时，OpenAI 地址、Anthropic 地址、模型 ID、API 密钥四个输入框增加一键「粘贴」文字按钮（名称除外）\n- 模型 ID 框：有下拉菜单时不显示粘贴，互斥设计\n- 粘贴 OpenAI/Anthropic 地址时自动剥除多余的 `/v1/chat/completions`、`/v1/messages` 路径后缀",
   "releaseNotesI18n": {
-    "zh-cn": "## 修复\n\n- 强化 Kimi Code 切换模型和启动规则（v5.4.3 引入的回归）\n\n## 开源\n\n- EchoBird 全开源（前后端），协议调整为 MIT，项目地址：github.com/edison7009/EchoBird，主要应对即将到来的 Claude 全面限制",
-    "en": "## Fixes\n\n- Hardened Kimi Code model switching and startup rules (regression from v5.4.3)\n\n## Open Source\n\n- EchoBird is now fully open-source (frontend + backend), relicensed to MIT; project: github.com/edison7009/EchoBird; in preparation for the upcoming Claude access restrictions",
-    "zh-tw": "## 修復\n\n- 強化 Kimi Code 切換模型和啟動規則（v5.4.3 引入的回歸）\n\n## 開源\n\n- EchoBird 全開源（前後端），協議調整為 MIT，專案地址：github.com/edison7009/EchoBird，主要應對即將到來的 Claude 全面限制",
-    "ja": "## 修正\n\n- Kimi Code のモデル切替と起動ルールを強化（v5.4.3 で導入された回帰）\n\n## オープンソース\n\n- EchoBird を完全オープンソース化（フロント+バック）、ライセンスを MIT に調整、プロジェクト：github.com/edison7009/EchoBird、近日予定の Claude 全体制限 に対応"
+    "zh-cn": "## 修复\n\n- 修复 ZCode 等安装到非默认盘符（如 `E:\\ZCode`）时无法扫描检测的问题\n\n## 体验\n\n- 编辑模型配置时，OpenAI 地址、Anthropic 地址、模型 ID、API 密钥四个输入框增加一键「粘贴」文字按钮（名称除外）\n- 模型 ID 框：有下拉菜单时不显示粘贴，互斥设计\n- 粘贴 OpenAI/Anthropic 地址时自动剥除多余的 `/v1/chat/completions`、`/v1/messages` 路径后缀",
+    "en": "## Fixes\n\n- Fixed ZCode (and other apps installed at a non-default drive, e.g. `E:\\ZCode`) not being detected during the install scan\n\n## UX\n\n- Editing a model config now shows a one-click \"Paste\" text button on the OpenAI URL, Anthropic URL, Model ID, and API key fields (the Name field stays manual)\n- Model ID field: the paste button is hidden when a dropdown menu is available — mutually exclusive\n- Pasting an OpenAI/Anthropic URL auto-strips redundant `/v1/chat/completions` and `/v1/messages` path suffixes",
+    "zh-tw": "## 修復\n\n- 修復 ZCode 等安裝到非預設磁碟（如 `E:\\ZCode`）時無法掃描偵測的問題\n\n## 體驗\n\n- 編輯模型設定時，OpenAI 位址、Anthropic 位址、模型 ID、API 金鑰四個輸入框增加一鍵「貼上」文字按鈕（名稱除外）\n- 模型 ID 欄：有下拉選單時不顯示貼上，互斥設計\n- 貼上 OpenAI/Anthropic 位址時自動剝除多餘的 `/v1/chat/completions`、`/v1/messages` 路徑後綴",
+    "ja": "## 修正\n\n- ZCode など、既定外ドライブ（例: `E:\\ZCode`）にインストールしたアプリがスキャンで検出されない問題を修正\n\n## 体験\n\n- モデル設定編集時に、OpenAI URL・Anthropic URL・モデル ID・API キーの 4 つの入力欄にワンクリック「貼り付け」テキストボタンを追加（名前欄は除く）\n- モデル ID 欄: ドロップダウンがある場合は貼り付けを表示しない排他設計\n- OpenAI/Anthropic URL 貼り付け時、余分な `/v1/chat/completions`・`/v1/messages` パス接尾辞を自動で削除"
   }
 }
