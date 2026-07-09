@@ -163,6 +163,7 @@ export type TKey =
   | 'toolCat.game'
   | 'toolCat.desktop'
   | 'toolCat.utility'
+  | 'toolCat.science'
   // ToolCard labels
   | 'tool.models'
   | 'tool.app'

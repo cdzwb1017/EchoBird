@@ -183,6 +183,7 @@ const en: Translations = {
   'toolCat.game': 'Game',
   'toolCat.desktop': 'Desktop',
   'toolCat.utility': 'Utilities',
+  'toolCat.science': 'Science',
   // Agent Worker tabs
   'agent.modelsTab': 'MODELS',
   'agent.codexRelayLabel': 'API Router',

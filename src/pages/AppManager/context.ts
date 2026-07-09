@@ -83,5 +83,6 @@ export const toolCategories = [
   'CLI Code',
   'AutoTrading',
   'Game',
+  'Science',
   'Utility',
 ] as const;

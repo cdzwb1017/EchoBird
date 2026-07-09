@@ -93,6 +93,7 @@ export const AppManagerMain: React.FC = () => {
                   Game: 'toolCat.game',
                   Desktop: 'toolCat.desktop',
                   Utility: 'toolCat.utility',
+                  Science: 'toolCat.science',
                 };
                 return t((catMap[cat] || cat) as TKey);
               })()}
@@ -141,7 +142,8 @@ export const AppManagerMain: React.FC = () => {
                   'CLI Code': 3,
                   AutoTrading: 4,
                   Game: 5,
-                  Utility: 6,
+                  Utility: 7,
+                  Science: 6,
                 };
                 const catDiff =
                   (categoryOrder[a.category || ''] ?? 99) - (categoryOrder[b.category || ''] ?? 99);

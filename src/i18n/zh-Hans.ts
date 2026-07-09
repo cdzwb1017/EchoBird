@@ -162,6 +162,7 @@ const zhHans: Partial<Translations> = {
   'toolCat.game': '游戏',
   'toolCat.desktop': '桌面端',
   'toolCat.utility': '工具',
+  'toolCat.science': '科研',
   'agent.modelsTab': '模型',
   'agent.codexRelayLabel': 'API Router',
   'agent.codexRelayHint':

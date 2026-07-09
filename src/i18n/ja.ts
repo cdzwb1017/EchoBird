@@ -187,6 +187,7 @@ const ja: Partial<Translations> = {
   'toolCat.game': 'ゲーム',
   'toolCat.desktop': 'デスクトップ',
   'toolCat.utility': 'ユーティリティ',
+  'toolCat.science': 'サイエンス',
   'agent.modelsTab': 'モデル',
   'agent.codexRelayLabel': 'API Router',
   'agent.codexRelayHint':

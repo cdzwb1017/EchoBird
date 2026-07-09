@@ -4,7 +4,7 @@
         "zh-Hans": "Claude 科学",
         "zh-Hant": "Claude 科學"
     },
-    "category": "Utility",
+    "category": "Science",
     "noModelConfig": true,
     "apiProtocol": [
         "anthropic"
