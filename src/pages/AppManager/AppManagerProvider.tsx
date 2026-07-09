@@ -254,8 +254,21 @@ export const AppManagerProvider: React.FC<AppManagerProviderProps> = ({ children
     const toolProtocols = toolData?.apiProtocol || ['openai'];
 
     const userSelectedProtocol = modelProtocolSelection[internalId];
-    const selectedProtocol =
-      userSelectedProtocol || (toolProtocols[0] === 'anthropic' ? 'anthropic' : 'openai');
+    // Default to the protocol the model's URL actually speaks — NOT toolProtocols[0].
+    // For a single-URL model (no ⇄ switcher) defaulting to toolProtocols[0] would
+    // write an OpenAI-only model as @ai-sdk/anthropic against an OpenAI URL (or an
+    // Anthropic-only model as openai-compatible), 404-ing every call at runtime.
+    // Only a both-URL model falls back to toolProtocols[0] — its switcher lets the
+    // user pick. (Improves zcode too: an anthropicUrl-only model now defaults correctly.)
+    const modelHasBoth = !!(model.baseUrl && model.anthropicUrl);
+    const defaultProtocol = modelHasBoth
+      ? toolProtocols[0] === 'anthropic'
+        ? 'anthropic'
+        : 'openai'
+      : model.anthropicUrl
+        ? 'anthropic'
+        : 'openai';
+    const selectedProtocol = userSelectedProtocol || defaultProtocol;
 
     const useAnthropicUrl = selectedProtocol === 'anthropic' && model.anthropicUrl;
     const apiUrl = useAnthropicUrl ? model.anthropicUrl! : model.baseUrl;

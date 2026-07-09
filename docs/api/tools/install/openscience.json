@@ -14,7 +14,7 @@
         "linux_download_x64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-linux-x64.tar.gz",
         "linux_download_arm64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-linux-arm64.tar.gz",
         "windows_download_x64": "https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-windows-x64.zip",
-        "note": "OpenScience is an open-source, model-agnostic AI research workbench (open-source Claude Science alternative). It runs a local server and opens a workspace UI in the browser. Install via npm (preferred, cross-platform), the curl install script (macOS/Linux), or a platform binary from GitHub Releases. EchoBird does not manage models or login for it — OpenScience takes any provider key (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.) via env var or `openscience keys add`, and runs a first-run onboarding that is auto-skipped when launched without a TTY."
+        "note": "OpenScience is an open-source, model-agnostic AI research workbench (open-source Claude Science alternative). It runs a local server and opens a workspace UI in the browser. Install via npm (preferred, cross-platform), the curl install script (macOS/Linux), or a platform binary from GitHub Releases. EchoBird configures the model by writing `~/.config/openscience/openscience.json` — a `provider.echobird` block (apiKey + baseURL; npm = @ai-sdk/anthropic for the Anthropic protocol, @ai-sdk/openai-compatible otherwise) plus `model`/`small_model` selectors pointing at `echobird/<model_id>`. OpenScience reads config per request, so a switch takes effect with no restart. Login, onboarding, and the Credentials panel stay OpenScience's own — its first-run onboarding auto-skips when launched without a TTY."
     },
     "install_flow": {
         "summary": "Install the `openscience` binary onto PATH (npm global, curl script, or GitHub release archive), then launch with `openscience serve` to start the local backend.",
@@ -24,13 +24,13 @@
             "macOS / Linux without npm: run `curl -fsSL https://openscience.sh/install | bash`. The script detects OS/arch, downloads the platform archive, extracts to ~/.openscience/bin, and modifies shell rc files (.zshrc / .bashrc) to add that dir to PATH. Tell the user to open a NEW terminal afterwards so PATH reloads.",
             "Windows without npm: download https://github.com/synthetic-sciences/OpenScience/releases/latest/download/openscience-windows-x64.zip, extract openscience.exe to %USERPROFILE%\\.openscience\\bin, and add that directory to the user PATH. Verify with `openscience --version` in a new terminal.",
             "After install, tell the user to launch with `openscience serve` in a terminal — it starts the local backend and prints the workspace URL (e.g. `openscience server listening on http://localhost:xxxxx`). The user opens that URL in their browser themselves. `serve` is headless and does NOT auto-open a browser; bare `openscience` (the `web` command) WOULD auto-open one, so use `serve` when launched from EchoBird.",
-            "OpenScience needs a model to do work. The user can export a provider key (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.) in the terminal before launching, run `openscience keys add`, or use the free demo models / Atlas managed models. EchoBird does not switch models for OpenScience — it uses the user's own keys."
+            "OpenScience reads `~/.config/openscience/openscience.json` per request (a model switch takes effect with no restart). When the user picks a model in EchoBird, EchoBird writes an `echobird` provider block + active-model selectors to that file, so the chosen model becomes active in the workspace. The user can alternatively power models with a provider key env var (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.), `openscience keys add`, or the free demo / Atlas managed models — those routes are independent of the EchoBird-written block."
         ],
         "tell_user": [
             "Which install method was used (npm global, curl script, or manual binary)",
             "That `openscience` is now on PATH (may need a NEW terminal to take effect)",
             "How to launch: `openscience serve` in a terminal (headless — prints the workspace URL, does not auto-open a browser)",
-            "To power models: set a provider key env var (e.g. ANTHROPIC_API_KEY) or run `openscience keys add`"
+            "To power models: pick a model in EchoBird (it writes the config to openscience.json), or set a provider key env var / run `openscience keys add` directly in OpenScience"
         ]
     },
     "network_requirements": {

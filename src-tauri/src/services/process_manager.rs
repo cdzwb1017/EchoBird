@@ -97,6 +97,17 @@ impl ProcessManager {
             tokio::time::sleep(std::time::Duration::from_millis(800)).await;
         }
 
+        // OpenScience runs a local web server (`openscience serve`) that caches
+        // config in memory — like desktop apps, a running instance won't pick up
+        // a model switch until it restarts (no file watcher on openscience.json;
+        // config.dispose only fires via OpenScience's own API, not external file
+        // writes). Kill OUR tracked instance by PID — NOT by image name — so a
+        // user's own `openscience serve` in another terminal is left untouched.
+        // Freeing port 4096 also makes the post-spawn browser-open reliable.
+        if tool_id == "openscience" && self.kill_tracked_instance(tool_id) {
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        }
+
         log::info!(
             "[ProcessManager] start_tool called: tool_id={}, start_command={:?}, \
              get_tool_start_command={:?}, get_tool_command={:?}, \
@@ -601,6 +612,12 @@ impl ProcessManager {
                     );
                     self.processes
                         .insert(tool_id.to_string(), ProcessInfo::new(pid));
+                    // OpenScience: the spawned `openscience serve` takes ~1-3s
+                    // to bind port 4096; poll + auto-open the workspace in the
+                    // user's browser so they don't copy the URL from the terminal.
+                    if tool_id == "openscience" {
+                        tokio::spawn(Self::openscience_wait_and_open_workspace());
+                    }
                     Ok(())
                 }
                 Err(e) => Err(format!("Spawn error: {}", e)),
@@ -633,6 +650,9 @@ impl ProcessManager {
             );
             self.processes
                 .insert(tool_id.to_string(), ProcessInfo::new(pid));
+            if tool_id == "openscience" {
+                tokio::spawn(Self::openscience_wait_and_open_workspace());
+            }
             Ok(())
         }
     }
@@ -1125,6 +1145,147 @@ impl ProcessManager {
             );
         }
         killed
+    }
+
+    /// Kill only the PID EchoBird spawned for `tool_id` (if any), leaving any
+    /// user-started instance of the same binary running. Used by serve-style
+    /// tools (OpenScience) where kill+restart is needed for a config/model
+    /// switch to take effect, but a blanket image-name kill (like
+    /// `kill_desktop_instances`) would nuke a user's own manually-started
+    /// instance. Mirrors `stop_all`'s per-PID kill, scoped to one tool.
+    ///
+    /// A liveness pre-check guards the PID-reuse window: if the user already
+    /// closed the serve terminal, the tracked PID is dead and we skip the kill
+    /// so a later-reused PID is never force-killed. (`check_processes` reaps
+    /// dead PIDs too but is only called on app quit; this runs on every
+    /// relaunch, so check inline.) Residual risk: a reused PID that is alive
+    /// as another process would still be killed — rare, since relaunch usually
+    /// follows close quickly and Windows doesn't recycle PIDs instantly.
+    fn kill_tracked_instance(&mut self, tool_id: &str) -> bool {
+        let info = match self.processes.remove(tool_id) {
+            Some(info) => info,
+            None => return false,
+        };
+        let pid = info.pid;
+        if !Self::pid_is_alive(pid) {
+            log::info!(
+                "[ProcessManager] tracked {tool_id} PID {pid} already exited — skip kill"
+            );
+            return false;
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            let killed = Command::new("taskkill")
+                .args(["/pid", &pid.to_string(), "/T", "/F"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+            if killed {
+                log::info!(
+                    "[ProcessManager] killed tracked {tool_id} PID {pid} for kill+restart"
+                );
+            }
+            killed
+        }
+        #[cfg(not(windows))]
+        {
+            unsafe {
+                libc::kill(pid as i32, libc::SIGKILL);
+            }
+            log::info!("[ProcessManager] killed tracked {tool_id} PID {pid} for kill+restart");
+            true
+        }
+    }
+
+    /// Whether the process owning `pid` is still running. Used by
+    /// `kill_tracked_instance` to skip dead (already-closed) PIDs.
+    #[cfg(windows)]
+    fn pid_is_alive(pid: u32) -> bool {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        // tasklist prints "No tasks are running which match..." when the PID is
+        // gone; any other non-empty output means a process owns it.
+        let Ok(out) = Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+        else {
+            return false;
+        };
+        let s = String::from_utf8_lossy(&out.stdout);
+        !s.contains("No tasks") && !s.trim().is_empty()
+    }
+
+    #[cfg(not(windows))]
+    fn pid_is_alive(pid: u32) -> bool {
+        // kill -0 returns 0 if the process exists, -1 (ESRCH) otherwise.
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
+
+    /// After spawning `openscience serve`, poll its default port (4096) and open
+    /// the workspace in the user's default browser once it responds. We killed
+    /// any tracked old instance first (see `start_tool`), so 4096 is free and the
+    /// new serve lands here. Best-effort: on timeout the spawned terminal has
+    /// already printed the real URL (which may differ if 4096 was taken by an
+    /// unrelated app), so the user can still open it manually — we just log.
+    async fn openscience_wait_and_open_workspace() {
+        const URL: &str = "http://localhost:4096";
+        let client = match reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(800))
+            .build()
+        {
+            Ok(c) => c,
+            Err(e) => {
+                log::warn!("[ProcessManager] OpenScience probe client build failed: {e}");
+                return;
+            }
+        };
+        // Bound the whole probe to ~10s wall-clock, not a fixed iteration count:
+        // a non-HTTP app squatting on 4096 could otherwise hold each request for
+        // the full per-request timeout and inflate the loop manyfold. The
+        // kill-old step frees 4096 for our serve, so the common path resolves in
+        // a few hundred ms (Bun-compiled binary binds in ~1-3s).
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while std::time::Instant::now() < deadline {
+            if client.get(URL).send().await.is_ok() {
+                Self::open_in_browser(URL);
+                log::info!(
+                    "[ProcessManager] OpenScience workspace ready at {URL}, opened in browser"
+                );
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+        log::warn!(
+            "[ProcessManager] OpenScience serve did not respond at {URL} within ~10s — \
+             open the URL printed in the serve terminal manually (the port may differ if 4096 was taken)"
+        );
+    }
+
+    /// Open a URL in the user's default browser, platform-native, no window flash.
+    fn open_in_browser(url: &str) {
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            // `start "" <url>` — the empty title arg prevents `start` from
+            // treating the URL as a window title.
+            let _ = Command::new("cmd")
+                .args(["/C", "start", "", url])
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn();
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let _ = Command::new("open").arg(url).spawn();
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let _ = Command::new("xdg-open").arg(url).spawn();
+        }
     }
 
     /// Get list of running tool IDs

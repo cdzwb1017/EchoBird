@@ -1423,6 +1423,7 @@ fn parse_category(s: &str) -> ToolCategory {
         "Game" => ToolCategory::Game,
         "Desktop" => ToolCategory::Desktop,
         "Utility" => ToolCategory::Utility,
+        "Science" => ToolCategory::Science,
         _ => ToolCategory::Custom,
     }
 }

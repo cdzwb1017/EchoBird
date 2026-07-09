@@ -214,6 +214,7 @@ pub enum ToolCategory {
     Game,
     Desktop,
     Utility,
+    Science,
     Custom,
 }
 

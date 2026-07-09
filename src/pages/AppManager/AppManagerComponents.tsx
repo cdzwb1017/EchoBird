@@ -140,10 +140,10 @@ export const AppManagerMain: React.FC = () => {
                   Desktop: 0,
                   IDE: 2,
                   'CLI Code': 3,
-                  AutoTrading: 4,
-                  Game: 5,
+                  Science: 4,
+                  AutoTrading: 5,
+                  Game: 6,
                   Utility: 7,
-                  Science: 6,
                 };
                 const catDiff =
                   (categoryOrder[a.category || ''] ?? 99) - (categoryOrder[b.category || ''] ?? 99);
@@ -157,6 +157,16 @@ export const AppManagerMain: React.FC = () => {
                     coffeecli: 99,
                   };
                   return (desktopOrder[a.id] ?? 50) - (desktopOrder[b.id] ?? 50);
+                }
+                // 4b. Within Science: OpenScience first (our model-config support
+                // is solid); Claude Science is macOS/Linux-only with thinner
+                // support, so it trails.
+                if (a.category === 'Science' && b.category === 'Science') {
+                  const scienceOrder: Record<string, number> = {
+                    openscience: 0,
+                    claudescience: 1,
+                  };
+                  return (scienceOrder[a.id] ?? 50) - (scienceOrder[b.id] ?? 50);
                 }
                 return 0;
               })
@@ -263,9 +273,19 @@ export const ModelListSection: React.FC<ModelListSectionProps> = ({
 
     let currentProtocol = 'openai';
     if (toolSupportsBoth) {
-      currentProtocol =
-        modelProtocolSelection[model.internalId] ||
-        (toolProtocols[0] === 'anthropic' ? 'anthropic' : 'openai');
+      // Default to the protocol the model's URL actually speaks (see
+      // applyModelConfig for the matching apply-side default). A single-URL model
+      // must not inherit toolProtocols[0] — that would display (and apply) an
+      // OpenAI-only model as Anthropic, 404-ing at call time. Only a both-URL
+      // model keeps the toolProtocols[0] default, since its ⇄ switcher can change it.
+      const defaultProtocol = modelHasBoth
+        ? toolProtocols[0] === 'anthropic'
+          ? 'anthropic'
+          : 'openai'
+        : model.anthropicUrl
+          ? 'anthropic'
+          : 'openai';
+      currentProtocol = modelProtocolSelection[model.internalId] || defaultProtocol;
     } else {
       currentProtocol = toolProtocols[0];
     }
