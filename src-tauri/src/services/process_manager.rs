@@ -1168,9 +1168,7 @@ impl ProcessManager {
         };
         let pid = info.pid;
         if !Self::pid_is_alive(pid) {
-            log::info!(
-                "[ProcessManager] tracked {tool_id} PID {pid} already exited — skip kill"
-            );
+            log::info!("[ProcessManager] tracked {tool_id} PID {pid} already exited — skip kill");
             return false;
         }
         #[cfg(windows)]
@@ -1184,9 +1182,7 @@ impl ProcessManager {
                 .map(|o| o.status.success())
                 .unwrap_or(false);
             if killed {
-                log::info!(
-                    "[ProcessManager] killed tracked {tool_id} PID {pid} for kill+restart"
-                );
+                log::info!("[ProcessManager] killed tracked {tool_id} PID {pid} for kill+restart");
             }
             killed
         }
