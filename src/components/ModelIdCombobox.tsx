@@ -175,8 +175,9 @@ export function ModelIdCombobox({
         // the directory carries model-id options the field is a picker (chevron
         // flush-right at right-1.5, pr-8), so the user selects from the menu;
         // when there are no options it's a plain free-text input and the paste
-        // label shows flush-right at right-2 (pr-12) instead.
-        className={`w-full bg-cyber-input border border-cyber-border ${hasOptions ? 'pr-8' : onPaste ? 'pr-12' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
+        // label shows flush-right at right-2 (pr-16 — wide enough for the
+        // longest locale's "貼り付け") instead.
+        className={`w-full bg-cyber-input border border-cyber-border ${hasOptions ? 'pr-8' : onPaste ? 'pr-16' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
       />
       {hasOptions && (
         <button

@@ -702,7 +702,7 @@ export function AddModelModal() {
   // These URL fields have NO overlay control to their right (unlike the API
   // key field, which has the encrypt/decrypt lock button at right-2), so the
   // paste label sits flush at the right edge — right-2 — and the input keeps
-  // just enough right padding (pr-12) to clear the "粘贴"/"Paste" text.
+  // enough right padding (pr-16) to clear the widest locale's "貼り付け" text.
   const pasteButton = (field: 'baseUrl' | 'anthropicUrl', normalize: (v: string) => string) => (
     <button
       type="button"
@@ -786,7 +786,7 @@ export function AddModelModal() {
                       baseUrl: normalizeOpenaiUrl(e.target.value),
                     }))
                   }
-                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-12 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-16 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
                 />
                 {pasteButton('baseUrl', normalizeOpenaiUrl)}
               </div>
@@ -806,7 +806,7 @@ export function AddModelModal() {
                       anthropicUrl: normalizeAnthropicUrl(e.target.value),
                     }))
                   }
-                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-12 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-16 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
                 />
                 {pasteButton('anthropicUrl', normalizeAnthropicUrl)}
               </div>
@@ -848,7 +848,7 @@ export function AddModelModal() {
                       : newModelForm.apiKey
                   }
                   onChange={(e) => setNewModelForm((prev) => ({ ...prev, apiKey: e.target.value }))}
-                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-14 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-20 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
                   readOnly={newModelForm.apiKey.startsWith('enc:v1:')}
                 />
                 {/* One-click paste from clipboard — plain text affordance (no
@@ -869,7 +869,7 @@ export function AddModelModal() {
                           /* clipboard empty / unreadable — no-op */
                         }
                       }}
-                      className="absolute right-10 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
+                      className="absolute right-8 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
                     >
                       {t('model.paste')}
                     </button>
