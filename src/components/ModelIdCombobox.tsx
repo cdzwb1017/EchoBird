@@ -171,10 +171,12 @@ export function ModelIdCombobox({
           if (hasOptions) setIsOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        // Reserve right padding for the controls that overlay the field: the
-        // paste affordance (pr-14, clears the "paste" text at right-9) takes
-        // precedence over the chevron (pr-8) since it sits further out.
-        className={`w-full bg-cyber-input border border-cyber-border ${onPaste ? 'pr-14' : hasOptions ? 'pr-8' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
+        // Reserve right padding for the controls that overlay the field. The
+        // chevron sits flush right (right-1.5, ~14px) and the paste label sits
+        // just to its left (right-8); together they need ~pr-16 so the typed
+        // value never slides under either. When only the chevron is present
+        // (no paste affordance) the smaller pr-8 suffices.
+        className={`w-full bg-cyber-input border border-cyber-border ${onPaste ? 'pr-16' : hasOptions ? 'pr-8' : ''} px-2 py-1.5 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button`}
       />
       {hasOptions && (
         <button
@@ -196,7 +198,7 @@ export function ModelIdCombobox({
           type="button"
           tabIndex={-1}
           onClick={onPaste}
-          className="absolute right-9 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
+          className="absolute right-8 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
         >
           {pasteLabel}
         </button>

@@ -698,6 +698,11 @@ export function AddModelModal() {
   // typing path uses, so a pasted full endpoint (`/v1/chat/completions`) is
   // trimmed to a clean base instead of silently keeping a doubled path that
   // would 404 every request while manually typed URLs work.
+  //
+  // These URL fields have NO overlay control to their right (unlike the API
+  // key field, which has the encrypt/decrypt lock button at right-2), so the
+  // paste label sits flush at the right edge — right-2 — and the input keeps
+  // just enough right padding (pr-12) to clear the "粘贴"/"Paste" text.
   const pasteButton = (field: 'baseUrl' | 'anthropicUrl', normalize: (v: string) => string) => (
     <button
       type="button"
@@ -712,7 +717,7 @@ export function AddModelModal() {
           /* clipboard empty / unreadable — no-op */
         }
       }}
-      className="absolute right-10 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
+      className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-xs text-cyber-text-secondary"
     >
       {t('model.paste')}
     </button>
@@ -781,7 +786,7 @@ export function AddModelModal() {
                       baseUrl: normalizeOpenaiUrl(e.target.value),
                     }))
                   }
-                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-14 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-12 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
                 />
                 {pasteButton('baseUrl', normalizeOpenaiUrl)}
               </div>
@@ -801,7 +806,7 @@ export function AddModelModal() {
                       anthropicUrl: normalizeAnthropicUrl(e.target.value),
                     }))
                   }
-                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-14 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
+                  className="w-full bg-cyber-input border border-cyber-border px-2 py-1.5 pr-12 text-xs text-cyber-text font-mono focus:border-cyber-border focus:outline-none rounded-button"
                 />
                 {pasteButton('anthropicUrl', normalizeAnthropicUrl)}
               </div>
