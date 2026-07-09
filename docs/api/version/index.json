@@ -1,5 +1,5 @@
 {
-  "version": "5.4.5",
+  "version": "5.4.6",
   "releaseDate": "2026-07-09",
   "releaseNotes": "## 修复\n\n- 修复 ZCode 等安装到非默认盘符（如 `E:\\ZCode`）时无法扫描检测的问题\n\n## 体验\n\n- 编辑模型配置时，OpenAI 地址、Anthropic 地址、模型 ID、API 密钥四个输入框增加一键「粘贴」文字按钮（名称除外）\n- 模型 ID 框：有下拉菜单时不显示粘贴，互斥设计\n- 粘贴 OpenAI/Anthropic 地址时自动剥除多余的 `/v1/chat/completions`、`/v1/messages` 路径后缀",
   "releaseNotesI18n": {
