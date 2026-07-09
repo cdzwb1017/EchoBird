@@ -6,17 +6,18 @@
     "github": "",
     "install": {
         "curl (macOS / Linux — recommended)": "curl -fsSL https://x.ai/cli/install.sh | bash",
-        "curl (Windows — under Git Bash / MSYS2)": "curl -fsSL https://x.ai/cli/install.sh | bash",
+        "powershell (Windows — recommended)": "irm https://x.ai/cli/install.ps1 | iex",
+        "curl (Windows — Git Bash / MSYS2 alternative)": "curl -fsSL https://x.ai/cli/install.sh | bash",
+        "npm (any OS)": "npm install -g @xai-official/grok",
         "specific version": "curl -fsSL https://x.ai/cli/install.sh | bash -s 0.1.42",
         "deployment key (non-interactive)": "GROK_DEPLOYMENT_KEY=<key> bash <(curl -fsSL https://x.ai/cli/install.sh)",
-        "WARNING": "As of 2026-05 Grok Build is in early beta gated to SuperGrok Heavy subscribers. The install script is publicly downloadable, but the binary it downloads requires an active subscription to authenticate at runtime. Confirm the user has SuperGrok Heavy before installing.",
-        "note": "Distributed as a single binary, NOT via npm/brew/winget. The installer drops `grok` under ~/.grok/bin/ on macOS/Linux. On Windows it requires Git Bash or MSYS2 — WSL users get the Linux binary. Environment variables: GROK_CHANNEL (stable|alpha|enterprise, default stable), GROK_BIN_DIR (override install path), GROK_PROXY_URL (HTTP proxy)."
+        "note": "Grok Build is in beta but openly installable — NO subscription required. Authenticate via `grok login` (browser OAuth, token in ~/.grok/auth.json) or the XAI_API_KEY env var. The installer drops `grok` (plus an `agent` ACP entry point) under ~/.grok/bin/ on every OS; on Windows add %USERPROFILE%\\.grok\\bin to PATH. WSL uses the Linux binary. Environment variables: GROK_CHANNEL (stable|alpha|enterprise, default stable), GROK_BIN_DIR (override install path), GROK_PROXY_URL (HTTP proxy), GROK_HOME (override config dir, default ~/.grok)."
     },
     "first_run": {
         "description": "Grok Build authenticates via xAI account OR via env-var API key. EchoBird's model switcher uses the env-var path; the user only needs to run `grok login` when they restore to xAI Official.",
         "auth_methods": {
             "browser oauth (default)": "grok login   # opens a browser to authenticate with xAI; token persists in ~/.grok/auth.json",
-            "api key (headless / no-browser)": "export GROK_CODE_XAI_API_KEY=xai-...   # bypass the browser flow; required for SSH / scripts",
+            "api key (headless / no-browser)": "export XAI_API_KEY=xai-...   # bypass the browser flow; required for SSH / scripts",
             "echobird custom model": "Set via the App Manager; EchoBird writes ~/.grok/config.toml and ~/.echobird/grok.json. When EchoBird launches grok, ECHOBIRD_GROK_API_KEY is injected automatically."
         },
         "verify": "grok --version   # confirms install; `grok inspect` shows discovered config sources, skills, plugins, hooks, MCP servers"

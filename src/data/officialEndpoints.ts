@@ -61,7 +61,7 @@ export const OFFICIAL_ENDPOINTS: Record<string, OfficialEndpoint> = {
     name: 'xAI Official',
     baseUrl: 'https://api.x.ai/v1',
     protocol: 'openai',
-    modelId: 'grok-4',
+    modelId: 'grok-4.5',
   },
   mimocode: {
     // Restore removes our provider block; MiMo Code then falls back to the

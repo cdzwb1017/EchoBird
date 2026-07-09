@@ -3468,7 +3468,7 @@ fn restore_grok_to_official() -> ApplyResult {
     let existing = fs::read_to_string(&config_path).unwrap_or_default();
 
     // Only strip what we wrote; leave every other section alone so grok
-    // falls back to its xAI default (auth.json / GROK_CODE_XAI_API_KEY).
+    // falls back to its xAI default (auth.json / XAI_API_KEY).
     let our_model_header = format!("[model.{}]", GROK_PROFILE_NAME);
     let mut stripped = toml_strip_section(&existing, &our_model_header);
     stripped = toml_strip_section(&stripped, "[models]");
