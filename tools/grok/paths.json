@@ -5,7 +5,8 @@
     },
     "category": "CLI Code",
     "apiProtocol": [
-        "openai"
+        "openai",
+        "anthropic"
     ],
     "docs": "https://docs.x.ai/build/overview",
     "website": "https://x.ai/cli",

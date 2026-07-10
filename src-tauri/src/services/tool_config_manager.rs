@@ -3398,12 +3398,32 @@ fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
             message: "Model ID is empty.".to_string(),
         };
     }
-    let base_url = model_info
+    // Frontend folds anthropicUrl into ModelInfo.base_url when the user
+    // picks the Anthropic protocol (see applyModelConfig in
+    // AppManagerProvider). grok appends "/messages" to base_url for
+    // api_backend="messages" (verified), so the base must end with "/v1"
+    // to reach <anthropicUrl>/v1/messages - matching EchoBird's
+    // anthropicUrl + /v1/messages convention. For OpenAI, grok appends
+    // "/chat/completions" and base_url already includes /v1, so it's
+    // used as-is.
+    let is_anthropic = model_info.protocol.as_deref() == Some("anthropic");
+    let raw_base = model_info
         .base_url
         .as_deref()
         .map(|u| u.trim_end_matches('/').to_string())
         .filter(|u| !u.is_empty())
-        .unwrap_or_else(|| "https://api.x.ai/v1".to_string());
+        .unwrap_or_else(|| {
+            if is_anthropic {
+                "https://api.x.ai".to_string()
+            } else {
+                "https://api.x.ai/v1".to_string()
+            }
+        });
+    let base_url = if is_anthropic && !raw_base.ends_with("/v1") {
+        format!("{}/v1", raw_base)
+    } else {
+        raw_base
+    };
     let display_name = model_info.name.as_deref().unwrap_or(model_id);
     let api_key = match model_info.api_key.as_deref().filter(|k| !k.is_empty()) {
         Some(k) => k.to_string(),
@@ -3424,13 +3444,24 @@ fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
     let mut stripped = toml_strip_section(&existing, &our_model_header);
     stripped = toml_strip_section(&stripped, "[models]");
 
+    // For Anthropic, grok needs api_backend="messages" plus the
+    // anthropic-version header (it does NOT auto-add either - verified
+    // against grok 0.2.93). env_key is sent as "Authorization: Bearer",
+    // which Anthropic accepts, so no inline x-api-key is needed.
+    // extra_headers is forwarded verbatim.
+    let backend_block = if is_anthropic {
+        "api_backend = \"messages\"\nextra_headers = { \"anthropic-version\" = \"2023-06-01\" }\n"
+    } else {
+        ""
+    };
     let new_section = format!(
-        "\n\n[model.{name}]\nmodel = \"{model}\"\nbase_url = \"{base}\"\nname = \"{display}\"\nenv_key = \"{env}\"\n\n[models]\ndefault = \"{name}\"\n",
+        "\n\n[model.{name}]\nmodel = \"{model}\"\nbase_url = \"{base}\"\nname = \"{display}\"\nenv_key = \"{env}\"\n{backend}\n[models]\ndefault = \"{name}\"\n",
         name = GROK_PROFILE_NAME,
         model = toml_escape(model_id),
         base = toml_escape(&base_url),
         display = toml_escape(display_name),
         env = GROK_API_KEY_ENV,
+        backend = backend_block,
     );
     let final_content = format!("{}{}", stripped.trim_end(), new_section);
 
@@ -3451,6 +3482,7 @@ fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
         "actualModel": model_id,
         "modelName": display_name,
         "envKey": GROK_API_KEY_ENV,
+        "protocol": if is_anthropic { "anthropic" } else { "openai" },
     });
     let _ = write_json_file(&relay_path, &relay);
 
@@ -3518,6 +3550,14 @@ fn read_grok() -> Option<ModelInfo> {
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
         .map(String::from);
+    // Round-trip the protocol so the UI re-shows Anthropic when the user
+    // re-opens a grok model configured with api_backend="messages". Absent
+    // (older relay) defaults to openai.
+    let protocol = relay
+        .get("protocol")
+        .and_then(|v| v.as_str())
+        .unwrap_or("openai")
+        .to_string();
 
     Some(ModelInfo {
         name: Some(model.clone()),
@@ -3525,7 +3565,7 @@ fn read_grok() -> Option<ModelInfo> {
         base_url,
         api_key,
         anthropic_url: None,
-        protocol: Some("openai".to_string()),
+        protocol: Some(protocol),
         display_model: None,
         relay_mode: None,
         responses_passthrough: None,
