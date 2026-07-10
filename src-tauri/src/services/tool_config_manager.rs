@@ -3506,7 +3506,8 @@ fn restore_grok_to_official() -> ApplyResult {
 
 fn read_grok() -> Option<ModelInfo> {
     // Source of truth is the relay file (holds the real key + URL).
-    // ~/.grok/config.toml only stores env_key, not the key itself.
+    // ~/.grok/config.toml stores the inline api_key too, but we read the
+    // relay here so the UI round-trips without re-parsing TOML.
     let relay_path = echobird_dir().join("grok.json");
     let relay = read_json_file(&relay_path)?;
 
