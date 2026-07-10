@@ -3331,18 +3331,23 @@ fn read_workbuddy() -> Option<ModelInfo> {
 //   model    = "deepseek-chat"
 //   base_url = "https://api.deepseek.com/v1"
 //   name     = "EchoBird"
-//   env_key  = "ECHOBIRD_GROK_API_KEY"
+//   api_key  = "<real key>"
 //
 //   [models]
 //   default  = "echobird"
 //
-// Grok reads the API key from $ECHOBIRD_GROK_API_KEY at runtime. To make
-// `grok` runnable from any terminal without manual exports, we ALSO write
-// ~/.echobird/grok.json holding the real key — process_manager injects
-// this into the env when launching grok from App Manager. Users running
-// `grok` from their own shell need to `export ECHOBIRD_GROK_API_KEY=...`
-// themselves (or set it once via their shell rc); the success message
-// surfaces this caveat.
+// The real API key is written INLINE as `api_key` (grok's documented
+// inline-key field — verified against grok 0.2.93: it sends the value
+// as `Authorization: Bearer <key>` with no env var needed). This makes
+// `grok` runnable from ANY terminal, not just one EchoBird launched —
+// manual launch reads config.toml directly, no env-var injection
+// required. (Using `env_key` instead would tie grok to EchoBird's
+// process_manager env injection and break manual launches.)
+//
+// We ALSO keep ~/.echobird/grok.json as the read-side source of truth
+// (holds the key + URL so read_grok / the UI can round-trip without
+// re-parsing TOML). process_manager still injects the key into env as
+// a harmless redundancy for EchoBird-launched sessions.
 //
 // We rewrite ONLY the [model.echobird] and [models] sections — every
 // other thing the user has in ~/.grok/config.toml (skills paths, plugin
@@ -3425,12 +3430,12 @@ fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
     stripped = toml_strip_section(&stripped, "[models]");
 
     let new_section = format!(
-        "\n\n[model.{name}]\nmodel = \"{model}\"\nbase_url = \"{base}\"\nname = \"{display}\"\nenv_key = \"{env}\"\n\n[models]\ndefault = \"{name}\"\n",
+        "\n\n[model.{name}]\nmodel = \"{model}\"\nbase_url = \"{base}\"\nname = \"{display}\"\napi_key = \"{key}\"\n\n[models]\ndefault = \"{name}\"\n",
         name = GROK_PROFILE_NAME,
         model = toml_escape(model_id),
         base = toml_escape(&base_url),
         display = toml_escape(display_name),
-        env = GROK_API_KEY_ENV,
+        key = toml_escape(&api_key),
     );
     let final_content = format!("{}{}", stripped.trim_end(), new_section);
 
@@ -3442,8 +3447,10 @@ fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
         };
     }
 
-    // Relay file — holds the actual key so process_manager can inject it
-    // into $ECHOBIRD_GROK_API_KEY when launching grok from App Manager.
+    // Relay file — read-side source of truth (read_grok parses this, not
+    // the TOML). process_manager also still injects the key into env as a
+    // harmless redundancy for EchoBird-launched sessions; the inline
+    // api_key in config.toml is what makes manual launches work.
     let relay_path = echobird_dir().join("grok.json");
     let relay = serde_json::json!({
         "apiKey": api_key,
@@ -3457,8 +3464,8 @@ fn apply_grok(model_info: &ModelInfo) -> ApplyResult {
     ApplyResult {
         success: true,
         message: format!(
-            "Model \"{}\" applied to Grok. When running `grok` from a terminal directly, also set {}=<your_key> first; launching from EchoBird injects it automatically.",
-            display_name, GROK_API_KEY_ENV
+            "Model \"{}\" applied to Grok. Run `grok` from any terminal — the API key is written into ~/.grok/config.toml, so manual launch works without EchoBird.",
+            display_name
         ),
     }
 }
